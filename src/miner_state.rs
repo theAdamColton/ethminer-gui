@@ -4,7 +4,7 @@
 
 /// Defines cli settings to be passed to ethminer
 pub struct Settings {
-    ///   Multiple Pools are allowed to be specified
+    /// Multiple Url flags are allowed to be specified
     pub url: Vec<Url>,
     pub device_type: Option<DeviceType>,
     /// Display interval in seconds
@@ -25,12 +25,78 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Make this settings into a valid cli args call
+    /// Render these settings into a valid cli args call
     fn render(&self) -> String {
         let mut out = String::new();
         out.push_str(&self.bin_path);
         out.push_str(" ");
+        match &self.device_type {
+            Some(s) => {
+                out.push_str(&s.render());
+            }
+            None => {}
+        }
+        for url in &self.url {
+            out.push_str(&url.render());
+            out.push_str(" ");
+        }
+        out.push_str(" ");
         out.to_owned()
+    }
+}
+
+pub enum DeviceType {
+    OpenCl(ClSettings),
+    Cuda(CudaSettings),
+}
+
+impl DeviceType {
+    pub fn render(&self) -> String {
+        let mut out = String::new();
+        match &self {
+            DeviceType::OpenCl(s) => {
+                out.push_str("-G ");
+                out.push_str(&s.render());
+            }
+            DeviceType::Cuda(s) => {
+                out.push_str("-U ");
+                out.push_str(&s.render());
+            }
+        }
+        out.push_str(" ");
+        out
+    }
+}
+
+pub struct ClSettings {
+    pub global_work: u32,
+    pub local_work: u32,
+}
+
+impl ClSettings {
+    pub fn render(&self) -> String {
+        let mut out = String::new();
+        out.push_str("--cl-global-work ");
+        out.push_str(&self.global_work.to_string());
+        out.push_str(" --cl-local-work ");
+        out.push_str(&self.local_work.to_string());
+        out
+    }
+}
+
+pub struct CudaSettings {
+    pub grid_size: u32,
+    pub block_size: u32,
+}
+
+impl CudaSettings {
+    pub fn render(&self) -> String {
+        let mut out = String::new();
+        out.push_str("--cu-grid-size ");
+        out.push_str(&self.grid_size.to_string());
+        out.push_str(" --cu-block-size ");
+        out.push_str(&self.block_size.to_string());
+        out
     }
 }
 
@@ -106,22 +172,6 @@ pub enum Transport {
     ssl,
 }
 
-pub enum DeviceType {
-    OpenCl(ClSettings),
-    Cuda(CudaSettings),
-}
-
-pub struct ClSettings {
-    pub global_work: u32,
-    pub local_work: u32,
-}
-
-pub struct CudaSettings {
-    pub grid_size: u32,
-    pub block_size: u32,
-}
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,5 +180,44 @@ mod tests {
         let url = Url::default();
         println!("{}", url.render());
     }
-}
+    #[test]
+    fn test_default_settings_render() {
+        let settings = Settings::default();
+        println!("{}", settings.render());
+    }
+    #[test]
+    fn test_cl_render() {
+        let cl = DeviceType::OpenCl(ClSettings {
+            local_work: 12,
+            global_work: 12,
+        });
+        println!("{}", cl.render());
 
+        let cuda = DeviceType::Cuda(CudaSettings {
+            grid_size: 32,
+            block_size: 32,
+        });
+        println!("{}", cuda.render());
+
+        let mut settings = Settings {
+            device_type : Some(cuda),
+            ..Default::default()
+        };
+        println!("Cuda cli: {}", settings.render());
+
+        settings = Settings {
+            device_type: Some(cl),
+            ..Default::default()
+        };
+        println!("Cl cli: {}", settings.render());
+    }
+
+    #[test]
+    fn test_mult_urls() {
+        let settings = Settings {
+            url : vec![Url::default(), Url::default()],
+            ..Default::default()
+        };
+        println!("{}", settings.render());
+    }
+}
