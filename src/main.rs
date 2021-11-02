@@ -4,14 +4,14 @@
  Simple GUI app for ethminer
 
   _________________________________________
- |file|options|   etherminer-gui     |-|%|X|
+ |file|options|   etherminer-gui     |-|/|X|
  |-----------------------------------------|
  | Settings:    _______________________    |
- ||wallet ad|  |_->_cuda__|_->_opencl__|   |       radio button
- ||pool adre|  | ....collapseable....  |   |       shows either cuda or opencl specific settings
+ ||wallet ad|  |_->_cuda__|_->_opencl__|   |    radio button
+ ||pool adre|  | ....collapseable....  |   |    shows either cuda or opencl specific settings
  ||stratum  |  |__________|____________|   |
  ||transport|                              |
- |                                       //|
+ |                   |apply and restart| //|
  |-----------------------------------------|
  |              ________________________   |
  |  |rr   |    |                        |  |
@@ -19,7 +19,7 @@
  |             |________________________|  |
  |              ________________________   |
  |  |start|    |                        |  |
- |  |stop |    |     etherminer sout    |  |       expandable upper panel (window with panels)
+ |  |stop |    |     etherminer sout    |  |    expandable upper panel (window with panels)
  |  |pause|    |________________________|  |
  |_________________________________________|
 
@@ -47,6 +47,7 @@ use miner_state::*;
 
 pub struct MinerApp {
     settings: MinerSettings,
+    port_contents: String, // TODO hack that doesnt work with multiple urls
     enabled: bool,
     changed: bool,
 }
@@ -55,6 +56,7 @@ impl Default for MinerApp {
     fn default() -> Self {
         Self {
             settings: MinerSettings::default(),
+            port_contents: String::new(),
             enabled: true,
             changed: false,
         }
@@ -63,16 +65,55 @@ impl Default for MinerApp {
 
 impl epi::App for MinerApp {
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Hello World!");
             ui.collapsing("Miner Settings", |ui| {
+                ui.collapsing("Pool Settings", |ui| {
+                    for url in &mut self.settings.url {
+                        ui.horizontal(|ui| {
+                            ui.label("Wallet Address");
+                            ui.add(egui::TextEdit::multiline(&mut url.wallet_address));
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Pool Address");
+                            ui.add(egui::TextEdit::multiline(&mut url.pool));
+                        });
+                        ui.end_row();
+
+                        ui.horizontal(|ui| {
+                            ui.label("Port");
+                            let response = ui.add(egui::TextEdit::singleline(&mut self.port_contents));
+                            if response.changed() {
+                                // Default port 4444
+                                match self.port_contents.parse::<u32>() {
+                                    Ok(s) => {
+                                        url.port = s;
+                                    },
+                                    Err(_) => {}
+                                }
+                            }
+                        });
+                        ui.end_row();
+
+                        ui.collapsing("Scheme", |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Stratum");
+                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum, "Stratum");
+                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum1, "Stratum1");
+                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum2, "Stratum2");
+                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum3, "Stratum3");
+                            });
+                        });
+                    }
+                });
+
                 ui.horizontal(|ui| {
-                    ui.label("Wallet Address");
+                    ui.label("Etherminer path");
+                    ui.add(egui::TextEdit::multiline(&mut self.settings.bin_path));
                 });
                 ui.end_row();
-                ui.horizontal(|ui| {
-                    ui.add(egui::TextEdit::multiline(&mut self.settings.url[0].wallet_address).hint_text("Enter Wallet Address"))
-                })
             })
         });
     }

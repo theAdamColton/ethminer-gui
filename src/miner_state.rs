@@ -157,6 +157,7 @@ pub struct Scheme {
 }
 
 #[derive(ToString)]
+#[derive(PartialEq)]
 pub enum Stratum {
     stratum,
     stratum1,
@@ -165,6 +166,7 @@ pub enum Stratum {
 }
 
 #[derive(ToString)]
+#[derive(PartialEq)]
 pub enum Transport {
     tcp,
     tls,
