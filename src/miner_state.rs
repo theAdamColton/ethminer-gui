@@ -3,7 +3,7 @@
 #[macro_use]
 
 /// Defines cli settings to be passed to ethminer
-pub struct Settings {
+pub struct MinerSettings {
     /// Multiple Url flags are allowed to be specified
     pub url: Vec<Url>,
     pub device_type: Option<DeviceType>,
@@ -13,7 +13,7 @@ pub struct Settings {
     pub bin_path: String,
 }
 
-impl Default for Settings {
+impl Default for MinerSettings {
     fn default() -> Self {
         Self {
             url: vec![Url::default()],
@@ -24,7 +24,7 @@ impl Default for Settings {
     }
 }
 
-impl Settings {
+impl MinerSettings {
     /// Render these settings into a valid cli args call
     fn render(&self) -> String {
         let mut out = String::new();
@@ -41,7 +41,7 @@ impl Settings {
             out.push_str(" ");
         }
         out.push_str(" ");
-        out.to_owned()
+        out
     }
 }
 
@@ -182,7 +182,7 @@ mod tests {
     }
     #[test]
     fn test_default_settings_render() {
-        let settings = Settings::default();
+        let settings = MinerSettings::default();
         println!("{}", settings.render());
     }
     #[test]
@@ -199,13 +199,13 @@ mod tests {
         });
         println!("{}", cuda.render());
 
-        let mut settings = Settings {
+        let mut settings = MinerSettings {
             device_type : Some(cuda),
             ..Default::default()
         };
         println!("Cuda cli: {}", settings.render());
 
-        settings = Settings {
+        settings = MinerSettings {
             device_type: Some(cl),
             ..Default::default()
         };
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_mult_urls() {
-        let settings = Settings {
+        let settings = MinerSettings {
             url : vec![Url::default(), Url::default()],
             ..Default::default()
         };
