@@ -75,28 +75,15 @@ impl epi::App for MinerApp {
             ui.collapsing("Miner Settings", |ui| {
                 ui.collapsing("Pool Settings", |ui| {
                     for url in &mut self.temp_settings.url {
-                        ui.horizontal(|ui| {
-                            ui.centered_and_justified(|ui| {
-                                ui.label("Wallet Address");
-                                ui.add(egui::TextEdit::multiline(&mut url.wallet_address));
-                            });
+                        settings_entry("Wallet Address", ui, |ui| {
+                            ui.add(egui::TextEdit::singleline(&mut url.wallet_address));
                         });
-                        ui.end_row();
-                        ui.horizontal(|ui| {
-                            ui.centered_and_justified(|ui| {
-                                ui.label("Pool Address");
-                                ui.add(egui::TextEdit::multiline(&mut url.pool));
-                            });
+                        settings_entry("Pool Address", ui, |ui| {
+                            ui.add(egui::TextEdit::singleline(&mut url.pool));
                         });
-                        ui.end_row();
-
-                        ui.horizontal(|ui| {
-                            ui.centered_and_justified(|ui| {
-                                ui.label("Port");
-                                let response = ui.add(egui::TextEdit::singleline(&mut url.port));
-                            });
+                        settings_entry("Port", ui, |ui| {
+                            ui.add(egui::TextEdit::singleline(&mut url.port));
                         });
-                        ui.end_row();
 
                         ui.collapsing("Scheme", |ui| {
                             ui.horizontal(|ui| {
@@ -155,7 +142,7 @@ fn main() {
 }
 
 fn settings_entry<R>(
-    label: String,
+    label: &'static str,
     ui: &mut egui::Ui,
     add_contents: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<()> {
