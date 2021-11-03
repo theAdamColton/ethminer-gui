@@ -70,36 +70,57 @@ impl Default for MinerApp {
 
 impl epi::App for MinerApp {
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
-
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Hello World!");
             ui.collapsing("Miner Settings", |ui| {
                 ui.collapsing("Pool Settings", |ui| {
                     for url in &mut self.temp_settings.url {
                         ui.horizontal(|ui| {
-                            ui.label("Wallet Address");
-                            ui.add(egui::TextEdit::multiline(&mut url.wallet_address));
+                            ui.centered_and_justified(|ui| {
+                                ui.label("Wallet Address");
+                                ui.add(egui::TextEdit::multiline(&mut url.wallet_address));
+                            });
                         });
                         ui.end_row();
                         ui.horizontal(|ui| {
-                            ui.label("Pool Address");
-                            ui.add(egui::TextEdit::multiline(&mut url.pool));
+                            ui.centered_and_justified(|ui| {
+                                ui.label("Pool Address");
+                                ui.add(egui::TextEdit::multiline(&mut url.pool));
+                            });
                         });
                         ui.end_row();
 
                         ui.horizontal(|ui| {
-                            ui.label("Port");
-                            let response = ui.add(egui::TextEdit::singleline(&mut url.port));
+                            ui.centered_and_justified(|ui| {
+                                ui.label("Port");
+                                let response = ui.add(egui::TextEdit::singleline(&mut url.port));
+                            });
                         });
                         ui.end_row();
 
                         ui.collapsing("Scheme", |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label("Stratum");
-                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum, "Stratum");
-                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum1, "Stratum1");
-                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum2, "Stratum2");
-                            ui.radio_value(&mut url.scheme.stratum, Stratum::stratum3, "Stratum3");
+                            ui.horizontal(|ui| {
+                                ui.label("Stratum");
+                                ui.radio_value(
+                                    &mut url.scheme.stratum,
+                                    Stratum::stratum,
+                                    "Stratum",
+                                );
+                                ui.radio_value(
+                                    &mut url.scheme.stratum,
+                                    Stratum::stratum1,
+                                    "Stratum1",
+                                );
+                                ui.radio_value(
+                                    &mut url.scheme.stratum,
+                                    Stratum::stratum2,
+                                    "Stratum2",
+                                );
+                                ui.radio_value(
+                                    &mut url.scheme.stratum,
+                                    Stratum::stratum3,
+                                    "Stratum3",
+                                );
                             });
                         });
                     }
@@ -131,4 +152,17 @@ fn main() {
     let mut app: MinerApp = MinerApp::default();
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);
+}
+
+fn settings_entry<R>(
+    label: String,
+    ui: &mut egui::Ui,
+    add_contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::InnerResponse<()> {
+    ui.horizontal(|ui| {
+        ui.centered_and_justified(|ui| {
+            ui.label(label);
+            add_contents(ui);
+        });
+    })
 }
