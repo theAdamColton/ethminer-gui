@@ -11,7 +11,8 @@
  ||pool adre|  | ....collapseable....  |   |    shows either cuda or opencl specific settings
  ||stratum  |  |__________|____________|   |
  ||transport|                              |
- |                   |apply and restart| //|
+ |                                         |
+ |  |cancel|         |apply and restart|   |
  |-----------------------------------------|
  |              ________________________   |
  |  |rr   |    |                        |  |
@@ -46,7 +47,10 @@ use eframe::{egui, epi};
 use miner_state::*;
 
 pub struct MinerApp {
+    /// Stores the currently used settings
     settings: MinerSettings,
+    /// Stores the settings that haven't been applied yet
+    temp_settings: MinerSettings,
     port_contents: String, // TODO hack that doesnt work with multiple urls
     enabled: bool,
     changed: bool,
@@ -56,6 +60,7 @@ impl Default for MinerApp {
     fn default() -> Self {
         Self {
             settings: MinerSettings::default(),
+            temp_settings: MinerSettings::default(),
             port_contents: String::new(),
             enabled: true,
             changed: false,
@@ -70,7 +75,7 @@ impl epi::App for MinerApp {
             ui.heading("Hello World!");
             ui.collapsing("Miner Settings", |ui| {
                 ui.collapsing("Pool Settings", |ui| {
-                    for url in &mut self.settings.url {
+                    for url in &mut self.temp_settings.url {
                         ui.horizontal(|ui| {
                             ui.label("Wallet Address");
                             ui.add(egui::TextEdit::multiline(&mut url.wallet_address));
@@ -84,16 +89,7 @@ impl epi::App for MinerApp {
 
                         ui.horizontal(|ui| {
                             ui.label("Port");
-                            let response = ui.add(egui::TextEdit::singleline(&mut self.port_contents));
-                            if response.changed() {
-                                // Default port 4444
-                                match self.port_contents.parse::<u32>() {
-                                    Ok(s) => {
-                                        url.port = s;
-                                    },
-                                    Err(_) => {}
-                                }
-                            }
+                            let response = ui.add(egui::TextEdit::singleline(&mut url.port));
                         });
                         ui.end_row();
 
@@ -111,9 +107,17 @@ impl epi::App for MinerApp {
 
                 ui.horizontal(|ui| {
                     ui.label("Etherminer path");
-                    ui.add(egui::TextEdit::multiline(&mut self.settings.bin_path));
+                    ui.add(egui::TextEdit::multiline(&mut self.temp_settings.bin_path));
                 });
                 ui.end_row();
+
+                ui.horizontal(|ui| {
+                    let response = ui.button("Cancel");
+                    if response.clicked() {
+                        // Cancel temp_settings
+                        self.temp_settings = self.settings.clone();
+                    }
+                });
             })
         });
     }

@@ -1,7 +1,3 @@
-// Strum contains all the trait definitions
-
-#[macro_use]
-
 /// Defines cli settings to be passed to ethminer
 pub struct MinerSettings {
     /// Multiple Url flags are allowed to be specified
@@ -20,6 +16,17 @@ impl Default for MinerSettings {
             device_type: None,
             display_interval: 1.0,
             bin_path: "~/Desktop/ethminer/bin/ethminer".to_owned(),
+        }
+    }
+}
+
+impl Clone for MinerSettings {
+    fn clone(&self) -> Self {
+        Self {
+            url: self.url.clone(),
+            device_type: self.device_type.clone(),
+            display_interval: self.display_interval,
+            bin_path: self.bin_path.clone(),
         }
     }
 }
@@ -45,6 +52,7 @@ impl MinerSettings {
     }
 }
 
+#[derive(Clone)]
 pub enum DeviceType {
     OpenCl(ClSettings),
     Cuda(CudaSettings),
@@ -68,9 +76,10 @@ impl DeviceType {
     }
 }
 
+#[derive(Clone)]
 pub struct ClSettings {
-    pub global_work: u32,
-    pub local_work: u32,
+    pub global_work: String,
+    pub local_work: String,
 }
 
 impl ClSettings {
@@ -84,9 +93,10 @@ impl ClSettings {
     }
 }
 
+#[derive(Clone)]
 pub struct CudaSettings {
-    pub grid_size: u32,
-    pub block_size: u32,
+    pub grid_size: String,
+    pub block_size: String,
 }
 
 impl CudaSettings {
@@ -102,12 +112,12 @@ impl CudaSettings {
 
 /// The The URL is in the form :
 ///   scheme://[user[.workername][:password]@]hostname:port[/...].
-///
+#[derive(Clone)]
 pub struct Url {
     pub wallet_address: String,
     pub miner_name: Option<String>,
     pub pool: String,
-    pub port: u32,
+    pub port: String,
     pub scheme: Scheme,
 }
 
@@ -116,8 +126,8 @@ impl Default for Url {
         Self {
             wallet_address: "0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C".to_owned(),
             miner_name: None,
-            pool: "us2.ethermine.org".to_owned(),
-            port: 4444,
+            pool: "us2.ethermine.org".to_string(),
+            port: "4444".to_string(),
             scheme: Scheme {
                 stratum: Stratum::stratum2,
                 transport: Transport::ssl,
@@ -150,14 +160,14 @@ impl Url {
     }
 }
 
+#[derive(Clone)]
 pub struct Scheme {
     // 0 1 2 or 3
     pub stratum: Stratum,
     pub transport: Transport,
 }
 
-#[derive(ToString)]
-#[derive(PartialEq)]
+#[derive(ToString, PartialEq, Clone)]
 pub enum Stratum {
     stratum,
     stratum1,
@@ -165,8 +175,7 @@ pub enum Stratum {
     stratum3,
 }
 
-#[derive(ToString)]
-#[derive(PartialEq)]
+#[derive(ToString, PartialEq, Clone)]
 pub enum Transport {
     tcp,
     tls,
@@ -190,19 +199,19 @@ mod tests {
     #[test]
     fn test_cl_render() {
         let cl = DeviceType::OpenCl(ClSettings {
-            local_work: 12,
-            global_work: 12,
+            local_work: "12".to_string(),
+            global_work: "12".to_string(),
         });
         println!("{}", cl.render());
 
         let cuda = DeviceType::Cuda(CudaSettings {
-            grid_size: 32,
-            block_size: 32,
+            grid_size: "32".to_string(),
+            block_size: "32".to_string(),
         });
         println!("{}", cuda.render());
 
         let mut settings = MinerSettings {
-            device_type : Some(cuda),
+            device_type: Some(cuda),
             ..Default::default()
         };
         println!("Cuda cli: {}", settings.render());
@@ -217,7 +226,7 @@ mod tests {
     #[test]
     fn test_mult_urls() {
         let settings = MinerSettings {
-            url : vec![Url::default(), Url::default()],
+            url: vec![Url::default(), Url::default()],
             ..Default::default()
         };
         println!("{}", settings.render());
