@@ -32,11 +32,9 @@ impl Clone for MinerSettings {
 }
 
 impl MinerSettings {
-    /// Render these settings into a valid cli args call
-    fn render(&self) -> String {
+    /// Render settings into valid cli args
+    pub fn render(&self) -> String {
         let mut out = String::new();
-        out.push_str(&self.bin_path);
-        out.push_str(" ");
         match &self.device_type {
             Some(s) => {
                 out.push_str(&s.render());

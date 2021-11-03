@@ -44,6 +44,7 @@ extern crate strum;
 extern crate strum_macros;
 
 use eframe::{egui, epi};
+use std::process::Command;
 use miner_state::*;
 
 pub struct MinerApp {
@@ -54,6 +55,15 @@ pub struct MinerApp {
     port_contents: String, // TODO hack that doesnt work with multiple urls
     enabled: bool,
     changed: bool,
+}
+
+impl MinerApp {
+    fn run_ethminer(&self) {
+        Command::new(&self.settings.bin_path)
+            .args(&self.settings.render())
+            .spawn()
+            .expect("Failed to start ethminer!");
+    }
 }
 
 impl Default for MinerApp {
@@ -120,10 +130,13 @@ impl epi::App for MinerApp {
                 ui.end_row();
 
                 ui.horizontal(|ui| {
-                    let response = ui.button("Cancel");
-                    if response.clicked() {
+                    if ui.button("Cancel").clicked() {
                         // Cancel temp_settings
                         self.temp_settings = self.settings.clone();
+                    }
+                    if ui.button("Apply").clicked() {
+                        self.settings = self.temp_settings.clone();
+                        self.run_ethminer();
                     }
                 });
             })
