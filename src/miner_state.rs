@@ -48,10 +48,19 @@ impl MinerSettings {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub enum DeviceType {
     OpenCl(ClSettings),
     Cuda(CudaSettings),
+}
+
+/// For use by egui radio button
+impl PartialEq for DeviceType {
+    fn eq(&self, other: &Self) -> bool { 
+        // returns true if the type of the enum is the same,
+        // doesn't look at the data contained by the enum
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
 }
 
 impl DeviceType {
@@ -71,7 +80,7 @@ impl DeviceType {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct ClSettings {
     pub global_work: String,
     pub local_work: String,
@@ -90,7 +99,7 @@ impl ClSettings {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct CudaSettings {
     pub grid_size: String,
     pub block_size: String,

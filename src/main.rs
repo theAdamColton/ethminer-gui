@@ -79,6 +79,7 @@ impl MinerApp {
             None => {}
         }
     }
+
     fn show_device_settings(&mut self, ui: &mut egui::Ui) {
         ui.collapsing("Device Settings", |ui| {
             match self.temp_settings.device_type.as_mut() {
@@ -137,6 +138,10 @@ impl MinerApp {
                 }
             }
         });
+    }
+
+    fn show_ethminer_out(&self, ui: &mut egui::Ui) {
+
     }
 }
 
