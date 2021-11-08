@@ -48,10 +48,10 @@ impl MinerSettings {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum DeviceType {
-    OpenCl(Option<ClSettings>),
-    Cuda(Option<CudaSettings>),
+    OpenCl(ClSettings),
+    Cuda(CudaSettings),
 }
 
 impl DeviceType {
@@ -60,24 +60,18 @@ impl DeviceType {
         match &self {
             DeviceType::OpenCl(s) => {
                 out.push("-G".to_string());
-                match s {
-                    Some(x) => out.append(&mut x.render()),
-                    None => {}
-                }
-            }
+                    out.append(&mut s.render());
+            },
             DeviceType::Cuda(s) => {
                 out.push("-U".to_string());
-                match s {
-                    Some(x) => out.append(&mut x.render()),
-                    None => {}
-                }
+                out.append(&mut s.render());
             }
         }
         out
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ClSettings {
     pub global_work: String,
     pub local_work: String,
@@ -86,13 +80,17 @@ pub struct ClSettings {
 impl ClSettings {
     pub fn render(&self) -> Vec<String> {
         let mut out = Vec::new();
-        out.push(format!("--cl-global-work={}", &self.global_work));
-        out.push(format!(" --cl-local-work={}", &self.local_work));
+        if &self.global_work != "" {
+            out.push(format!("--cl-global-work={}", &self.global_work));
+        }
+        if &self.local_work != "" {
+            out.push(format!(" --cl-local-work={}", &self.local_work));
+        }
         out
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct CudaSettings {
     pub grid_size: String,
     pub block_size: String,
@@ -101,8 +99,12 @@ pub struct CudaSettings {
 impl CudaSettings {
     pub fn render(&self) -> Vec<String> {
         let mut out = Vec::new();
-        out.push(format!("--cu-grid-size={}", &self.grid_size));
-        out.push(format!(" --cu-block-size={}", &self.block_size));
+        if &self.grid_size != "" {
+            out.push(format!("--cu-grid-size={}", &self.grid_size));
+        }
+        if &self.block_size != "" {
+            out.push(format!(" --cu-block-size={}", &self.block_size));
+        }
         out
     }
 }
@@ -194,16 +196,16 @@ mod tests {
     }
     #[test]
     fn test_cl_render() {
-        let cl = DeviceType::OpenCl(Some(ClSettings {
+        let cl = DeviceType::OpenCl(ClSettings {
             local_work: "12".to_string(),
             global_work: "12".to_string(),
-        }));
+        });
         println!("{:?}", cl.render());
 
-        let cuda = DeviceType::Cuda(Some(CudaSettings {
+        let cuda = DeviceType::Cuda(CudaSettings {
             grid_size: "32".to_string(),
             block_size: "32".to_string(),
-        }));
+        });
         println!("{:?}", cuda.render());
 
         let mut settings = MinerSettings {

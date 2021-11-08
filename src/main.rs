@@ -62,7 +62,7 @@ impl MinerApp {
     fn run_ethminer(&mut self) {
         // Shuts down any already running child process
         self.kill_child_miner();
-       println!("{}", &self.settings.bin_path);
+        println!("{}", &self.settings.bin_path);
         self.child_handle = Some(Command::new(&self.settings.bin_path)
             .current_dir("/home/figes/Desktop/ethminer/")
             //.args(&self.settings.render())
@@ -78,6 +78,65 @@ impl MinerApp {
             }
             None => {}
         }
+    }
+    fn show_device_settings(&mut self, ui: &mut egui::Ui) {
+        ui.collapsing("Device Settings", |ui| {
+            match self.temp_settings.device_type.as_mut() {
+                None => {
+                    if ui.button("Enable Device Settings").clicked() {
+                        self.temp_settings.device_type = Some(DeviceType::Cuda(CudaSettings {
+                            grid_size: "".to_string(),
+                            block_size: "".to_string(),
+                        }));
+                    }
+                }
+                Some(x) => {
+                    settings_entry("Device Type", ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.radio_value(
+                                x,
+                                DeviceType::Cuda(CudaSettings {
+                                    grid_size: "".to_string(),
+                                    block_size: "".to_string(),
+                                }),
+                                "Cuda",
+                            );
+                            ui.radio_value(
+                                x,
+                                DeviceType::OpenCl(ClSettings {
+                                    global_work: "".to_string(),
+                                    local_work: "".to_string(),
+                                }),
+                                "OpenCl",
+                            );
+                        });
+                    });
+
+                    match x {
+                        DeviceType::Cuda(s) => {
+                            settings_entry("Grid Size", ui, |ui| {
+                                ui.add(egui::TextEdit::singleline(&mut s.grid_size));
+                            });
+                            settings_entry("Block Size", ui, |ui| {
+                                ui.add(egui::TextEdit::singleline(&mut s.block_size));
+                            });
+                        }
+                        DeviceType::OpenCl(s) => {
+                            settings_entry("Global Work", ui, |ui| {
+                                ui.add(egui::TextEdit::singleline(&mut s.global_work));
+                            });
+                             settings_entry("Local Work", ui, |ui| {
+                                ui.add(egui::TextEdit::singleline(&mut s.local_work));
+                            });
+                        }
+                    }
+
+                    if ui.button("Disable Device Settings").clicked() {
+                        self.temp_settings.device_type = None;
+                    }
+                }
+            }
+        });
     }
 }
 
@@ -95,7 +154,7 @@ impl Default for MinerApp {
 
 impl Drop for MinerApp {
     fn drop(&mut self) {
-        self.kill_child_miner(); 
+        self.kill_child_miner();
     }
 }
 
@@ -144,11 +203,11 @@ impl epi::App for MinerApp {
                     }
                 });
 
-                ui.horizontal(|ui| {
-                    ui.label("Etherminer path");
-                    ui.add(egui::TextEdit::multiline(&mut self.temp_settings.bin_path));
+                settings_entry("Ethminer Path", ui, |ui| {
+                    ui.add(egui::TextEdit::singleline(&mut self.temp_settings.bin_path));
                 });
-                ui.end_row();
+
+                self.show_device_settings(ui);
 
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
@@ -157,7 +216,8 @@ impl epi::App for MinerApp {
                     }
                     if ui.button("Apply").clicked() {
                         self.settings = self.temp_settings.clone();
-                        self.run_ethminer();
+                        println!("{:?}", &self.settings.render());
+                        //self.run_ethminer();
                     }
                 });
             })
