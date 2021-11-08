@@ -62,15 +62,12 @@ impl MinerApp {
     fn run_ethminer(&self) {
         println!("{}", &self.settings.bin_path);
         let out = Command::new(&self.settings.bin_path)
+            .current_dir("/home/figes/Desktop/ethminer/")
             //.args(&self.settings.render())
-            //.args(["-G", "-P stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
-            .arg("--help-ext con")
-            .output()
+            .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
+            //.args(["--help-ext=con"])
+            .spawn()
             .expect("Failed to start ethminer!");
-
-        println!("status: {}", out.status);
-        io::stdout().write_all(&out.stdout).unwrap();
-        io::stderr().write_all(&out.stderr).unwrap();
     }
 }
 
