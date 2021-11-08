@@ -60,21 +60,24 @@ pub struct MinerApp {
 
 impl MinerApp {
     fn run_ethminer(&mut self) {
-        // Shutsdown any already running child process
+        // Shuts down any already running child process
+        self.kill_child_miner();
+       println!("{}", &self.settings.bin_path);
+        self.child_handle = Some(Command::new(&self.settings.bin_path)
+            .current_dir("/home/figes/Desktop/ethminer/")
+            //.args(&self.settings.render())
+            .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
+            .spawn()
+            .expect("Failed to start ethminer!"));
+    }
+
+    fn kill_child_miner(&mut self) {
         match self.child_handle.as_mut() {
             Some(x) => {
                 x.kill().expect("Failed to kill child process!");
             }
             None => {}
         }
-        println!("{}", &self.settings.bin_path);
-        self.child_handle = Some(Command::new(&self.settings.bin_path)
-            .current_dir("/home/figes/Desktop/ethminer/")
-            //.args(&self.settings.render())
-            .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
-            //.args(["--help-ext=con"])
-            .spawn()
-            .expect("Failed to start ethminer!"));
     }
 }
 
@@ -87,6 +90,12 @@ impl Default for MinerApp {
             enabled: true,
             changed: false,
         }
+    }
+}
+
+impl Drop for MinerApp {
+    fn drop(&mut self) {
+        self.kill_child_miner(); 
     }
 }
 

@@ -59,14 +59,14 @@ impl DeviceType {
         let mut out = Vec::<String>::new();
         match &self {
             DeviceType::OpenCl(s) => {
-                out.push("-G ".to_string());
+                out.push("-G".to_string());
                 match s {
                     Some(x) => out.append(&mut x.render()),
                     None => {}
                 }
             }
             DeviceType::Cuda(s) => {
-                out.push("-U ".to_string());
+                out.push("-U".to_string());
                 match s {
                     Some(x) => out.append(&mut x.render()),
                     None => {}
@@ -86,8 +86,8 @@ pub struct ClSettings {
 impl ClSettings {
     pub fn render(&self) -> Vec<String> {
         let mut out = Vec::new();
-        out.push(format!("--cl-global-work {}", &self.global_work));
-        out.push(format!(" --cl-local-work {}", &self.local_work));
+        out.push(format!("--cl-global-work={}", &self.global_work));
+        out.push(format!(" --cl-local-work={}", &self.local_work));
         out
     }
 }
@@ -101,8 +101,8 @@ pub struct CudaSettings {
 impl CudaSettings {
     pub fn render(&self) -> Vec<String> {
         let mut out = Vec::new();
-        out.push(format!("--cu-grid-size {}", &self.grid_size));
-        out.push(format!(" --cu-block-size {}", &self.block_size));
+        out.push(format!("--cu-grid-size={}", &self.grid_size));
+        out.push(format!(" --cu-block-size={}", &self.block_size));
         out
     }
 }
@@ -136,7 +136,6 @@ impl Default for Url {
 impl Url {
     fn render(&self) -> Vec<String> {
         let mut str_o = String::new();
-        str_o.push_str("-P ");
         str_o.push_str(&self.scheme.stratum.to_string());
         str_o.push_str("+");
         str_o.push_str(&self.scheme.transport.to_string());
@@ -153,7 +152,7 @@ impl Url {
         str_o.push_str(&self.pool);
         str_o.push_str(":");
         str_o.push_str(&self.port.to_string());
-        vec![str_o]
+        vec!["-P".to_string(), str_o]
     }
 }
 
