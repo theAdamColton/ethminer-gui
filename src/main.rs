@@ -44,30 +44,37 @@ extern crate strum;
 extern crate strum_macros;
 
 use eframe::{egui, epi};
-use std::process::Command;
-use std::io::{self, Write};
 use miner_state::*;
+use std::io::{self, Write};
+use std::process::{Child, Command};
 
 pub struct MinerApp {
     /// Stores the currently used settings
     settings: MinerSettings,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
-    port_contents: String, // TODO hack that doesnt work with multiple urls
-    enabled: bool,
-    changed: bool,
+    child_handle: Option<Child>, // The handle to the ethminer process
+    enabled: bool,               // TODO
+    changed: bool,               // TODO
 }
 
 impl MinerApp {
-    fn run_ethminer(&self) {
+    fn run_ethminer(&mut self) {
+        // Shutsdown any already running child process
+        match self.child_handle.as_mut() {
+            Some(x) => {
+                x.kill().expect("Failed to kill child process!");
+            }
+            None => {}
+        }
         println!("{}", &self.settings.bin_path);
-        let out = Command::new(&self.settings.bin_path)
+        self.child_handle = Some(Command::new(&self.settings.bin_path)
             .current_dir("/home/figes/Desktop/ethminer/")
             //.args(&self.settings.render())
             .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
             //.args(["--help-ext=con"])
             .spawn()
-            .expect("Failed to start ethminer!");
+            .expect("Failed to start ethminer!"));
     }
 }
 
@@ -76,7 +83,7 @@ impl Default for MinerApp {
         Self {
             settings: MinerSettings::default(),
             temp_settings: MinerSettings::default(),
-            port_contents: String::new(),
+            child_handle: None,
             enabled: true,
             changed: false,
         }
