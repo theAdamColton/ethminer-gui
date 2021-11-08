@@ -45,6 +45,7 @@ extern crate strum_macros;
 
 use eframe::{egui, epi};
 use std::process::Command;
+use std::io::{self, Write};
 use miner_state::*;
 
 pub struct MinerApp {
@@ -60,11 +61,16 @@ pub struct MinerApp {
 impl MinerApp {
     fn run_ethminer(&self) {
         println!("{}", &self.settings.bin_path);
-        Command::new(&self.settings.bin_path)
+        let out = Command::new(&self.settings.bin_path)
             //.args(&self.settings.render())
-            .args(["-G", "-P stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
-            .spawn()
+            //.args(["-G", "-P stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
+            .arg("--help-ext con")
+            .output()
             .expect("Failed to start ethminer!");
+
+        println!("status: {}", out.status);
+        io::stdout().write_all(&out.stdout).unwrap();
+        io::stderr().write_all(&out.stderr).unwrap();
     }
 }
 
