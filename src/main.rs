@@ -166,7 +166,6 @@ impl Drop for MinerApp {
 impl epi::App for MinerApp {
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Hello World!");
             ui.collapsing("Miner Settings", |ui| {
                 ui.collapsing("Pool Settings", |ui| {
                     for url in &mut self.temp_settings.url {
@@ -210,6 +209,23 @@ impl epi::App for MinerApp {
 
                 settings_entry("Ethminer Path", ui, |ui| {
                     ui.add(egui::TextEdit::singleline(&mut self.temp_settings.bin_path));
+                    if ui.button("Choose Path").clicked() {
+                        // Native file picker
+                        let path = std::env::current_dir().unwrap();
+                        let res = rfd::FileDialog::new()
+                            .set_directory(&path)
+                            .pick_files();
+
+                        println!("Chose {:#?}", res);
+                        match res {
+                            Some(x) => {
+                                if x.len() == 1 {
+                                    self.temp_settings.bin_path = x[0].to_str().expect("Could not get path").to_string();
+                                }
+                            }
+                            None => {}
+                        }
+                    }
                 });
 
                 self.show_device_settings(ui);
