@@ -45,8 +45,9 @@ extern crate strum_macros;
 
 use eframe::{egui, epi};
 use miner_state::*;
+use std::io::Read;
 use std::io::{self, Write};
-use std::process::{Child, Command};
+use std::process::{Child, ChildStdout, Command, Stdio};
 
 pub struct MinerApp {
     /// Stores the currently used settings
@@ -54,8 +55,7 @@ pub struct MinerApp {
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
     child_handle: Option<Child>, // The handle to the ethminer process
-    enabled: bool,               // TODO
-    changed: bool,               // TODO
+    output_buffer: String,
 }
 
 impl MinerApp {
@@ -126,7 +126,7 @@ impl MinerApp {
                             settings_entry("Global Work", ui, |ui| {
                                 ui.add(egui::TextEdit::singleline(&mut s.global_work));
                             });
-                             settings_entry("Local Work", ui, |ui| {
+                            settings_entry("Local Work", ui, |ui| {
                                 ui.add(egui::TextEdit::singleline(&mut s.local_work));
                             });
                         }
@@ -140,8 +140,32 @@ impl MinerApp {
         });
     }
 
-    fn show_ethminer_out(&self, ui: &mut egui::Ui) {
+    fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
+        // The output box
+        ui.separator();
+        egui::ScrollArea::vertical().stick_to_bottom().show(ui, |ui| {
+            let mut o = String::new();
+            for x in 0..1000 {
+                o.push_str("Beer is the mind killer. ");
+            }
+            ui.with_layout(
+                egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
+                |ui| {
+                    //ui.label(&self.output_buffer);
+                    ui.label(&o);
+                },
+            );
+        });
+    }
 
+    fn update_output_buffer(&mut self) {
+        match &mut self.child_handle {
+            Some(x) => {
+                let child_out: &mut ChildStdout = x.stdout.as_mut().unwrap();
+                child_out.read_to_string(&mut self.output_buffer);
+            }
+            None => {}
+        }
     }
 }
 
@@ -151,8 +175,7 @@ impl Default for MinerApp {
             settings: MinerSettings::default(),
             temp_settings: MinerSettings::default(),
             child_handle: None,
-            enabled: true,
-            changed: false,
+            output_buffer: String::new()
         }
     }
 }
@@ -212,15 +235,14 @@ impl epi::App for MinerApp {
                     if ui.button("Choose Path").clicked() {
                         // Native file picker
                         let path = std::env::current_dir().unwrap();
-                        let res = rfd::FileDialog::new()
-                            .set_directory(&path)
-                            .pick_files();
+                        let res = rfd::FileDialog::new().set_directory(&path).pick_files();
 
                         println!("Chose {:#?}", res);
                         match res {
                             Some(x) => {
                                 if x.len() == 1 {
-                                    self.temp_settings.bin_path = x[0].to_str().expect("Could not get path").to_string();
+                                    self.temp_settings.bin_path =
+                                        x[0].to_str().expect("Could not get path").to_string();
                                 }
                             }
                             None => {}
@@ -238,10 +260,16 @@ impl epi::App for MinerApp {
                     if ui.button("Apply").clicked() {
                         self.settings = self.temp_settings.clone();
                         println!("{:?}", &self.settings.render());
-                        //self.run_ethminer();
+                    }
+                    if ui.button("Run").clicked() {
+                        self.run_ethminer();
+                    }
+                    if ui.button("Stop").clicked() {
+                        self.kill_child_miner();
                     }
                 });
-            })
+            });
+            self.show_ethminer_out(ui);
         });
     }
 
