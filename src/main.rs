@@ -141,6 +141,7 @@ impl MinerApp {
     }
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
+        self.update_output_buffer();
         // The output box
         ui.separator();
         egui::ScrollArea::vertical().stick_to_bottom().show(ui, |ui| {
@@ -161,8 +162,14 @@ impl MinerApp {
     fn update_output_buffer(&mut self) {
         match &mut self.child_handle {
             Some(x) => {
-                let child_out: &mut ChildStdout = x.stdout.as_mut().unwrap();
-                child_out.read_to_string(&mut self.output_buffer);
+                match x.stdout.as_mut() {
+                    Some(out) => {
+                        let mut buf = [0;12];
+                        let num_bytes = out.read(&mut buf).unwrap();
+                        println!("The bytes: {:?}", &buf[..num_bytes]);
+                    }
+                    None => {}
+                }
             }
             None => {}
         }
