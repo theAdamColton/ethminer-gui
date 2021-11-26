@@ -57,6 +57,7 @@ pub struct MinerApp {
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
     child_handle: Mutex<Option<Child>>, // The handle to the ethminer process
+    output: String,
 }
 
 impl MinerApp {
@@ -70,7 +71,7 @@ impl MinerApp {
             .current_dir("/home/figes/Desktop/ethminer/")
             //.args(&self.settings.render())
             .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
-            //.stdout(Stdio::piped())
+            .stdout(Stdio::piped())
             .spawn()
             .expect("Failed to start ethminer!"));
     }
@@ -148,7 +149,6 @@ impl MinerApp {
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
         self.update_output_buffer();
         // The output box
-        self.update_output_buffer();
         ui.separator();
         egui::ScrollArea::vertical().stick_to_bottom().show(ui, |ui| {
 //            let mut o = String::new();
@@ -158,7 +158,7 @@ impl MinerApp {
             ui.with_layout(
                 egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
                 |ui| {
-                    //ui.label(&self.output_buffer);
+                    ui.label(&self.output);
                     //ui.label(&o);
                 },
             );
@@ -172,11 +172,11 @@ impl MinerApp {
             Some(x) => {
                 match x.stdout.as_mut() {
                     Some(out) => {
-                        let mut buf = [0;12];
-                        let num_bytes = out.read(&mut buf).unwrap();
-                        println!("The bytes: {:?}", &buf[..num_bytes]);
+                        //let mut buf = [0;32];
+                        //let num_bytes = out.read(&mut buf).unwrap();
+                        //println!("The bytes: {:?}", &buf[..num_bytes]);
                     }
-                    None => {}
+                    None => {println!("Stdout None!");}
                 }
             }
             None => {}
@@ -190,6 +190,7 @@ impl Default for MinerApp {
             settings: MinerSettings::default(),
             temp_settings: MinerSettings::default(),
             child_handle: Mutex::new(None),
+            output: String::new()
         }
     }
 }

@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 eframe = "0.15.0"
 rfd = "0.6.1"
+tokio = { version = "1.14.0", features = ["full"] }
 serde = { version = "1", features = ["derive"], optional = true }
 strum = "0.13.0"
 strum_macros = "0.13.0"
