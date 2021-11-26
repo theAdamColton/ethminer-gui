@@ -146,6 +146,7 @@ impl MinerApp {
     }
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
+        self.update_output_buffer();
         // The output box
         self.update_output_buffer();
         ui.separator();
@@ -170,9 +171,10 @@ impl MinerApp {
         match child.as_mut() {
             Some(x) => {
                 match x.stdout.as_mut() {
-                    Some(child_out) => {
-                        //child_out.read_to_string(&mut self.output_buffer);
-                        //println!("Read to String {}", self.output_buffer);
+                    Some(out) => {
+                        let mut buf = [0;12];
+                        let num_bytes = out.read(&mut buf).unwrap();
+                        println!("The bytes: {:?}", &buf[..num_bytes]);
                     }
                     None => {}
                 }
