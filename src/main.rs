@@ -46,6 +46,8 @@ extern crate strum_macros;
 use eframe::{egui, epi};
 use miner_state::*;
 use std::io::Read;
+use std::thread;
+use std::sync::Mutex;
 use std::io::{self, Write};
 use std::process::{Child, ChildStdout, Command, Stdio};
 
@@ -54,25 +56,28 @@ pub struct MinerApp {
     settings: MinerSettings,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
-    child_handle: Option<Child>, // The handle to the ethminer process
-    output_buffer: String,
+    child_handle: Mutex<Option<Child>>, // The handle to the ethminer process
 }
 
 impl MinerApp {
+    /// Starts the command in a new thread
     fn run_ethminer(&mut self) {
         // Shuts down any already running child process
         self.kill_child_miner();
         println!("{}", &self.settings.bin_path);
-        self.child_handle = Some(Command::new(&self.settings.bin_path)
+        let mut child = self.child_handle.lock().unwrap();
+        *child = Some(Command::new(&self.settings.bin_path)
             .current_dir("/home/figes/Desktop/ethminer/")
             //.args(&self.settings.render())
             .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
+            //.stdout(Stdio::piped())
             .spawn()
             .expect("Failed to start ethminer!"));
     }
 
     fn kill_child_miner(&mut self) {
-        match self.child_handle.as_mut() {
+        let mut child = self.child_handle.lock().unwrap();
+        match child.as_mut() {
             Some(x) => {
                 x.kill().expect("Failed to kill child process!");
             }
@@ -142,27 +147,35 @@ impl MinerApp {
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
         // The output box
+        self.update_output_buffer();
         ui.separator();
         egui::ScrollArea::vertical().stick_to_bottom().show(ui, |ui| {
-            let mut o = String::new();
-            for x in 0..1000 {
-                o.push_str("Beer is the mind killer. ");
-            }
+//            let mut o = String::new();
+            //for x in 0..1000 {
+                //o.push_str("Beer is the mind killer. ");
+            //}
             ui.with_layout(
                 egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
                 |ui| {
                     //ui.label(&self.output_buffer);
-                    ui.label(&o);
+                    //ui.label(&o);
                 },
             );
         });
     }
 
+    /// Copies the child_handle sout to the output_buffer
     fn update_output_buffer(&mut self) {
-        match &mut self.child_handle {
+        let mut child = self.child_handle.lock().unwrap();
+        match child.as_mut() {
             Some(x) => {
-                let child_out: &mut ChildStdout = x.stdout.as_mut().unwrap();
-                child_out.read_to_string(&mut self.output_buffer);
+                match x.stdout.as_mut() {
+                    Some(child_out) => {
+                        //child_out.read_to_string(&mut self.output_buffer);
+                        //println!("Read to String {}", self.output_buffer);
+                    }
+                    None => {}
+                }
             }
             None => {}
         }
@@ -174,8 +187,7 @@ impl Default for MinerApp {
         Self {
             settings: MinerSettings::default(),
             temp_settings: MinerSettings::default(),
-            child_handle: None,
-            output_buffer: String::new()
+            child_handle: Mutex::new(None),
         }
     }
 }
@@ -187,7 +199,7 @@ impl Drop for MinerApp {
 }
 
 impl epi::App for MinerApp {
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.collapsing("Miner Settings", |ui| {
                 ui.collapsing("Pool Settings", |ui| {
@@ -279,7 +291,7 @@ impl epi::App for MinerApp {
 }
 
 fn main() {
-    let mut app: MinerApp = MinerApp::default();
+    let app: MinerApp = MinerApp::default();
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);
 }
