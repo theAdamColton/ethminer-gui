@@ -2,18 +2,20 @@ use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
-use tokio::time::{sleep, Duration};
 use tokio::sync::Mutex;
 use tokio::sync::{
     mpsc,
     mpsc::{Receiver, Sender},
 };
+use tokio::time::{sleep, Duration};
 
 pub struct MinerController {
     /// Send with this to cause the minerController to kill the process if it exists
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
     pub spawn_tx: Sender<()>,
+    /// Send with this to update the buffer
+    pub update_tx: Sender<()>,
     /// The handle to the child process
     child_handle: Option<Child>,
     /// Contains the output of the miner
@@ -26,9 +28,11 @@ impl MinerController {
     pub fn new() -> Arc<Mutex<MinerController>> {
         let (kill_tx, mut kill_rx) = mpsc::channel(2);
         let (spawn_tx, mut spawn_rx) = mpsc::channel(2);
+        let (update_tx, mut update_rx) = mpsc::channel(2);
         let controller = Arc::new(Mutex::new(MinerController {
             kill_tx,
             spawn_tx,
+            update_tx,
             child_handle: None,
             buffer: Vec::new(),
         }));
@@ -38,9 +42,10 @@ impl MinerController {
         tokio::spawn(async move {
             loop {
                 if let Some(()) = kill_rx.recv().await {
+                    println!("recv kill");
                     controller2.lock().await.kill_miner().await;
                 }
-                sleep(Duration::from_millis(500)).await;
+                //sleep(Duration::from_millis(500)).await;
             }
         });
 
@@ -49,9 +54,20 @@ impl MinerController {
         tokio::spawn(async move {
             loop {
                 if let Some(()) = spawn_rx.recv().await {
+                    println!("recv spawn");
                     controller3.lock().await.spawn_miner().await;
                 }
-                sleep(Duration::from_millis(500)).await;
+                //sleep(Duration::from_millis(500)).await;
+            }
+        });
+
+        let controller4 = controller.clone();
+        tokio::spawn(async move {
+            loop {
+                if let Some(()) = update_rx.recv().await {
+                    println!("recv update");
+                    controller4.lock().await.update_buffer().await;
+                }
             }
         });
 
@@ -63,22 +79,25 @@ impl MinerController {
         self.kill_miner().await;
 
         println!("Spawning...");
-        let mut cmd = Command::new("ping")
+        let cmd = Command::new("ping")
             .arg("google.com")
             .stdout(Stdio::piped()) // Can do the same for stderr
             .spawn()
             .expect("cannot spawn");
 
-        let stdout = cmd.stdout.take().expect("no stout");
+        self.child_handle = Some(cmd);
+    }
 
-        //tokio::spawn(async move {kill_after_5(&mut cmd).await});
-        // To print out each line
-        //while let Some(line) = BufReader::new(stdout).lines().next_line().await.unwrap() {
-        let buf = BufReader::new(stdout);
-        let mut lines = buf.lines();
-        while let Some(line) = lines.next_line().await.unwrap() {
-            println!(" > {}", &line);
-            self.buffer.push(line);
+    async fn update_buffer(&mut self) {
+        if let Some(child_handle) = self.child_handle.as_mut() {
+            let stdout = child_handle.stdout.take().expect("no stout");
+
+            let buf = BufReader::new(stdout);
+            let mut lines = buf.lines();
+            while let Some(line) = lines.next_line().await.unwrap() {
+                println!(" > {}", &line);
+                self.buffer.push(line);
+            }
         }
     }
 
@@ -88,6 +107,7 @@ impl MinerController {
         if let Some(x) = self.child_handle.as_mut() {
             println!("Killing");
             x.kill().await.expect("Could not kill");
+            self.child_handle = None;
         }
     }
 }
