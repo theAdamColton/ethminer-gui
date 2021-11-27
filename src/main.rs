@@ -54,16 +54,15 @@ use std::sync::Arc;
 use tokio;
 use tokio::sync::Mutex;
 
-pub struct MinerApp<'a> {
+pub struct MinerApp {
     /// Stores the currently used settings
     settings: MinerSettings,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
-    miner_controller: Arc<Mutex<MinerController<'static>>>,
-    output: &'a Option<Vec<String>>,
+    miner_controller: Arc<Mutex<MinerController>>,
 }
 
-impl MinerApp<'_> {
+impl MinerApp {
     /// Aquires the lock and sends to the spawn channel
     fn run_ethminer(&self) {
         let mc = self.miner_controller.clone();
@@ -87,19 +86,6 @@ impl MinerApp<'_> {
                 .send(())
                 .await
                 .expect("Could not send kill");
-        });
-    }
-
-    /// Aquires the lock and sends to the update channel
-    fn update_output(&self) {
-        let mc = self.miner_controller.clone();
-        tokio::spawn(async move {
-            mc.lock()
-                .await
-                .update_tx
-                .send(())
-                .await
-                .expect("Could not send update request");
         });
     }
 
@@ -164,7 +150,7 @@ impl MinerApp<'_> {
     }
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
-        // The output box
+        // sends buffer update request every redraw, maybe this is not good
         ui.separator();
         egui::ScrollArea::vertical()
             .stick_to_bottom()
@@ -182,33 +168,27 @@ impl MinerApp<'_> {
             //                );
             //            });
             .show(ui, |ui| {
-                if let Some(out) = self.output {
-                    out.into_iter().for_each(|line| {
-                        ui.label(line);
-                    });
-                }
             });
     }
 }
 
-impl Default for MinerApp<'_> {
+impl Default for MinerApp {
     fn default() -> Self {
         Self {
             settings: MinerSettings::default(),
             temp_settings: MinerSettings::default(),
             miner_controller: MinerController::new(),
-            output: &None,
         }
     }
 }
 
-impl Drop for MinerApp<'_> {
+impl Drop for MinerApp {
     fn drop(&mut self) {
         self.kill_child_miner();
     }
 }
 
-impl epi::App for MinerApp<'_> {
+impl epi::App for MinerApp {
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.collapsing("Miner Settings", |ui| {

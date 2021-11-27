@@ -9,35 +9,28 @@ use tokio::sync::{
 };
 use tokio::time::{sleep, Duration};
 
-pub struct MinerController<'a> {
+pub struct MinerController {
     /// Send with this to cause the minerController to kill the process if it exists
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
     pub spawn_tx: Sender<()>,
-    /// Send with this to update the buffer
-    pub update_tx: Sender<()>,
-    pub buffer_rx: Receiver<&'a Vec<String>>,
     /// The handle to the child process
     child_handle: Option<Child>,
     /// Contains the output of the miner
-    pub buffer: Vec<String>,
+    pub buffer: Arc<Mutex<Vec<String>>>,
 }
 
-impl MinerController<'_> {
+impl MinerController {
     /// The controller has multiple threads mutating it, which necessitates its references be
     /// encapsulated by Arc<Mutex<>>
-    pub fn new() -> Arc<Mutex<MinerController<'static>>> {
+    pub fn new() -> Arc<Mutex<MinerController>> {
         let (kill_tx, mut kill_rx) = mpsc::channel(2);
         let (spawn_tx, mut spawn_rx) = mpsc::channel(2);
-        let (update_tx, mut update_rx) = mpsc::channel(2);
-        let (buffer_tx, mut buffer_rx) = mpsc::channel(2);
         let controller = Arc::new(Mutex::new(MinerController {
             kill_tx,
             spawn_tx,
-            update_tx,
-            buffer_rx,
             child_handle: None,
-            buffer: Vec::new(),
+            buffer: Arc::new(Mutex::new(Vec::new())),
         }));
 
         let controller2 = controller.clone();
@@ -48,7 +41,6 @@ impl MinerController<'_> {
                     println!("recv kill");
                     controller2.lock().await.kill_miner().await;
                 }
-                //sleep(Duration::from_millis(500)).await;
             }
         });
 
@@ -58,21 +50,11 @@ impl MinerController<'_> {
             loop {
                 if let Some(()) = spawn_rx.recv().await {
                     println!("recv spawn");
-                    controller3.lock().await.spawn_miner().await;
-                }
-                //sleep(Duration::from_millis(500)).await;
-            }
-        });
-
-        let controller4 = controller.clone();
-        tokio::spawn(async move {
-            // Updates the buffer inside of the controller,
-            // and then sends the borrow reference to the updated buffer
-            // through the buffer_rx channel
-            loop {
-                if let Some(()) = update_rx.recv().await {
-                    println!("recv update");
-                    controller4.lock().await.update_buffer().await;
+                    {
+                        let mut mc = controller3.lock().await;
+                        mc.spawn_miner().await;
+                        mc.update_buffer().await;
+                    }
                 }
             }
         });
@@ -94,18 +76,33 @@ impl MinerController<'_> {
         self.child_handle = Some(cmd);
     }
 
-    async fn update_buffer<'a>(&'a mut self) -> &'a Vec<String> {
+    /// This is a blocking function that will update the buffer based on the
+    /// output of the child_handle process
+    async fn update_buffer(&mut self) {
         if let Some(child_handle) = self.child_handle.as_mut() {
-            let stdout = child_handle.stdout.take().expect("no stout");
+            let stdout: ChildStdout = child_handle.stdout.take().expect("No child stdout");
 
+//            let buf = BufReader::new(stdout);
+//            let mut lines = buf.lines();
+//            while let Some(line) = lines.next_line().await.unwrap() {
+//                //println!(" > {}", &line);
+//                self.buffer.lock().await.push(line);
+//            }
+//
             let buf = BufReader::new(stdout);
             let mut lines = buf.lines();
-            while let Some(line) = lines.next_line().await.unwrap() {
-                println!(" > {}", &line);
-                self.buffer.push(line);
-            }
+            let out = self.buffer.clone();
+
+            // Spawns a thread to read the lines from the buffer as they 
+            // are made available
+            tokio::spawn(async move {
+                while let Some(line) = lines.next_line().await.unwrap() {
+                    println!(" > {}", &line);
+                    out.lock().await.push(line);
+                }
+            });
+
         }
-        &self.buffer
     }
 
     /// This function is run by the kill_rx on receiving
