@@ -38,6 +38,7 @@
 
 */
 mod miner_state;
+mod miner_controller;
 
 extern crate strum;
 #[macro_use]
@@ -56,7 +57,7 @@ pub struct MinerApp {
     settings: MinerSettings,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
-    child_handle: Mutex<Option<Child>>, // The handle to the ethminer process
+    child_handle: Option<Child>, // The handle to the ethminer process
     output: String,
 }
 
@@ -65,20 +66,20 @@ impl MinerApp {
     fn run_ethminer(&mut self) {
         // Shuts down any already running child process
         self.kill_child_miner();
-        println!("{}", &self.settings.bin_path);
-        let mut child = self.child_handle.lock().unwrap();
-        *child = Some(Command::new(&self.settings.bin_path)
-            .current_dir("/home/figes/Desktop/ethminer/")
-            //.args(&self.settings.render())
-            .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to start ethminer!"));
+
+//        self.child_handle = Some(Command::new(&self.settings.bin_path)
+//            .current_dir("/home/figes/Desktop/ethminer/")
+//            //.args(&self.settings.render())
+//            .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
+//            .stdout(Stdio::piped())
+//            .spawn()
+//            .expect("Failed to start ethminer!"));
+
+        self.child_handle = Some(Command::new("ping").arg("google.com").spawn().expect("Could not spawn"));
     }
 
     fn kill_child_miner(&mut self) {
-        let mut child = self.child_handle.lock().unwrap();
-        match child.as_mut() {
+        match self.child_handle.as_mut() {
             Some(x) => {
                 x.kill().expect("Failed to kill child process!");
             }
@@ -167,8 +168,7 @@ impl MinerApp {
 
     /// Copies the child_handle sout to the output_buffer
     fn update_output_buffer(&mut self) {
-        let mut child = self.child_handle.lock().unwrap();
-        match child.as_mut() {
+        match self.child_handle.as_mut() {
             Some(x) => {
                 match x.stdout.as_mut() {
                     Some(out) => {
@@ -189,7 +189,7 @@ impl Default for MinerApp {
         Self {
             settings: MinerSettings::default(),
             temp_settings: MinerSettings::default(),
-            child_handle: Mutex::new(None),
+            child_handle: None,
             output: String::new()
         }
     }
