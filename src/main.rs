@@ -277,7 +277,8 @@ impl epi::App for MinerApp {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let app: MinerApp = MinerApp::default();
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);

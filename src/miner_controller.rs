@@ -1,9 +1,13 @@
 use std::process::Stdio;
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
-use tokio::sync::{mpsc, mpsc::{Sender, Receiver}};
-use std::sync::Arc;
+use tokio::time::{sleep, Duration};
 use tokio::sync::Mutex;
+use tokio::sync::{
+    mpsc,
+    mpsc::{Receiver, Sender},
+};
 
 pub struct MinerController {
     /// Send with this to cause the minerController to kill the process if it exists
@@ -19,30 +23,35 @@ pub struct MinerController {
 impl MinerController {
     /// The controller has multiple threads mutating it, which necessitates its references be
     /// encapsulated by Arc<Mutex<>>
-    #[tokio::main]
-    pub async fn new() -> Arc<Mutex<MinerController>> {
+    pub fn new() -> Arc<Mutex<MinerController>> {
         let (kill_tx, mut kill_rx) = mpsc::channel(2);
         let (spawn_tx, mut spawn_rx) = mpsc::channel(2);
         let controller = Arc::new(Mutex::new(MinerController {
             kill_tx,
             spawn_tx,
             child_handle: None,
-            buffer: Vec::new()
+            buffer: Vec::new(),
         }));
 
         let controller2 = controller.clone();
         // Starts a thread that kills when receiving the kill signal
         tokio::spawn(async move {
-            if let Some(()) = kill_rx.recv().await {
-                controller2.lock().await.kill_miner().await;
+            loop {
+                if let Some(()) = kill_rx.recv().await {
+                    controller2.lock().await.kill_miner().await;
+                }
+                sleep(Duration::from_millis(500)).await;
             }
         });
 
         let controller3 = controller.clone();
         // Starts a thread that kills and then spawns when receiving the spawn signal
         tokio::spawn(async move {
-            if let Some(()) = spawn_rx.recv().await {
-                controller3.lock().await.spawn_miner().await;
+            loop {
+                if let Some(()) = spawn_rx.recv().await {
+                    controller3.lock().await.spawn_miner().await;
+                }
+                sleep(Duration::from_millis(500)).await;
             }
         });
 
@@ -75,8 +84,9 @@ impl MinerController {
 
     /// This function is run by the kill_rx on receiving
     async fn kill_miner(&mut self) {
-        println!("Killing");
+        println!("kill_miner()");
         if let Some(x) = self.child_handle.as_mut() {
+            println!("Killing");
             x.kill().await.expect("Could not kill");
         }
     }
