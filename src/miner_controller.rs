@@ -9,30 +9,33 @@ use tokio::sync::{
 };
 use tokio::time::{sleep, Duration};
 
-pub struct MinerController {
+pub struct MinerController<'a> {
     /// Send with this to cause the minerController to kill the process if it exists
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
     pub spawn_tx: Sender<()>,
     /// Send with this to update the buffer
     pub update_tx: Sender<()>,
+    pub buffer_rx: Receiver<&'a Vec<String>>,
     /// The handle to the child process
     child_handle: Option<Child>,
     /// Contains the output of the miner
     pub buffer: Vec<String>,
 }
 
-impl MinerController {
+impl MinerController<'_> {
     /// The controller has multiple threads mutating it, which necessitates its references be
     /// encapsulated by Arc<Mutex<>>
-    pub fn new() -> Arc<Mutex<MinerController>> {
+    pub fn new() -> Arc<Mutex<MinerController<'static>>> {
         let (kill_tx, mut kill_rx) = mpsc::channel(2);
         let (spawn_tx, mut spawn_rx) = mpsc::channel(2);
         let (update_tx, mut update_rx) = mpsc::channel(2);
+        let (buffer_tx, mut buffer_rx) = mpsc::channel(2);
         let controller = Arc::new(Mutex::new(MinerController {
             kill_tx,
             spawn_tx,
             update_tx,
+            buffer_rx,
             child_handle: None,
             buffer: Vec::new(),
         }));
@@ -63,6 +66,9 @@ impl MinerController {
 
         let controller4 = controller.clone();
         tokio::spawn(async move {
+            // Updates the buffer inside of the controller,
+            // and then sends the borrow reference to the updated buffer
+            // through the buffer_rx channel
             loop {
                 if let Some(()) = update_rx.recv().await {
                     println!("recv update");
@@ -88,7 +94,7 @@ impl MinerController {
         self.child_handle = Some(cmd);
     }
 
-    async fn update_buffer(&mut self) {
+    async fn update_buffer<'a>(&'a mut self) -> &'a Vec<String> {
         if let Some(child_handle) = self.child_handle.as_mut() {
             let stdout = child_handle.stdout.take().expect("no stout");
 
@@ -99,6 +105,7 @@ impl MinerController {
                 self.buffer.push(line);
             }
         }
+        &self.buffer
     }
 
     /// This function is run by the kill_rx on receiving

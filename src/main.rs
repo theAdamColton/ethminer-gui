@@ -59,11 +59,11 @@ pub struct MinerApp<'a> {
     settings: MinerSettings,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
-    miner_controller: Arc<Mutex<MinerController>>,
-    output: &'a Option<Vec<String>>
+    miner_controller: Arc<Mutex<MinerController<'static>>>,
+    output: &'a Option<Vec<String>>,
 }
 
-impl MinerApp <'_> {
+impl MinerApp<'_> {
     /// Aquires the lock and sends to the spawn channel
     fn run_ethminer(&self) {
         let mc = self.miner_controller.clone();
@@ -79,17 +79,27 @@ impl MinerApp <'_> {
 
     /// Aquires the lock and sends to the kill channel
     fn kill_child_miner(&self) {
-        println!("kill_child_miner");
         let mc = self.miner_controller.clone();
         tokio::spawn(async move {
-            println!("mc lock");
             mc.lock()
                 .await
                 .kill_tx
                 .send(())
                 .await
                 .expect("Could not send kill");
-            println!("mc unlocked");
+        });
+    }
+
+    /// Aquires the lock and sends to the update channel
+    fn update_output(&self) {
+        let mc = self.miner_controller.clone();
+        tokio::spawn(async move {
+            mc.lock()
+                .await
+                .update_tx
+                .send(())
+                .await
+                .expect("Could not send update request");
         });
     }
 
@@ -154,38 +164,30 @@ impl MinerApp <'_> {
     }
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
-        let text_style = TextStyle::Body;
-        let row_height = ui.fonts()[text_style].row_height();
-        let mut num_rows: usize = 1;
-        if let Some(x) = self.output {
-            num_rows = x.len();
-        }
-
         // The output box
         ui.separator();
         egui::ScrollArea::vertical()
             .stick_to_bottom()
-//            .show(ui, |ui| {
-//                let mut o = String::new();
-//                for x in 0..1000 {
-//                    o.push_str("Beer is the mind killer. ");
-//                }
-//                ui.with_layout(
-//                    egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
-//                    |ui| {
-//                        //ui.label(&self.output);
-//                        ui.label(&o);
-//                    },
-//                );
-//            });
-            .show_rows(
-                ui,
-                row_height,
-                num_rows,
-                |ui, row_range|  {
-
+            //            .show(ui, |ui| {
+            //                let mut o = String::new();
+            //                for x in 0..1000 {
+            //                    o.push_str("Beer is the mind killer. ");
+            //                }
+            //                ui.with_layout(
+            //                    egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
+            //                    |ui| {
+            //                        //ui.label(&self.output);
+            //                        ui.label(&o);
+            //                    },
+            //                );
+            //            });
+            .show(ui, |ui| {
+                if let Some(out) = self.output {
+                    out.into_iter().for_each(|line| {
+                        ui.label(line);
+                    });
                 }
-            );
+            });
     }
 }
 
@@ -200,13 +202,13 @@ impl Default for MinerApp<'_> {
     }
 }
 
-impl Drop for MinerApp <'_> {
+impl Drop for MinerApp<'_> {
     fn drop(&mut self) {
         self.kill_child_miner();
     }
 }
 
-impl epi::App for MinerApp <'_>{
+impl epi::App for MinerApp<'_> {
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.collapsing("Miner Settings", |ui| {
