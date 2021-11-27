@@ -1,3 +1,4 @@
+mod miner_controller;
 /**
     Adam Colton 2021
 
@@ -38,53 +39,53 @@
 
 */
 mod miner_state;
-mod miner_controller;
 
 extern crate strum;
 #[macro_use]
 extern crate strum_macros;
 
+use miner_controller::MinerController;
+
 use eframe::{egui, epi};
 use miner_state::*;
-use std::io::Read;
-use std::thread;
-use std::sync::Mutex;
-use std::io::{self, Write};
-use std::process::{Child, ChildStdout, Command, Stdio};
+
+use std::sync::Arc;
+use tokio;
+use tokio::sync::Mutex;
 
 pub struct MinerApp {
     /// Stores the currently used settings
     settings: MinerSettings,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
-    child_handle: Option<Child>, // The handle to the ethminer process
-    output: String,
+    miner_controller: Arc<Mutex<MinerController>>,
 }
 
 impl MinerApp {
-    /// Starts the command in a new thread
-    fn run_ethminer(&mut self) {
-        // Shuts down any already running child process
-        self.kill_child_miner();
-
-//        self.child_handle = Some(Command::new(&self.settings.bin_path)
-//            .current_dir("/home/figes/Desktop/ethminer/")
-//            //.args(&self.settings.render())
-//            .args(["-G", "-P", "stratum+tcp://0x03FeBDB6D16B8A19aeCf7c4A777AAdB690F89C3C@us2.ethermine.org:4444"])
-//            .stdout(Stdio::piped())
-//            .spawn()
-//            .expect("Failed to start ethminer!"));
-
-        self.child_handle = Some(Command::new("ping").arg("google.com").spawn().expect("Could not spawn"));
+    /// Aquires the lock and sends to the spawn channel
+    fn run_ethminer(&self) {
+        let mc = self.miner_controller.clone();
+        tokio::spawn(async move {
+            mc.lock()
+                .await
+                .spawn_tx
+                .send(())
+                .await
+                .expect("Could not send spawn");
+        });
     }
 
-    fn kill_child_miner(&mut self) {
-        match self.child_handle.as_mut() {
-            Some(x) => {
-                x.kill().expect("Failed to kill child process!");
-            }
-            None => {}
-        }
+    /// Aquires the lock and sends to the kill channel
+    fn kill_child_miner(&self) {
+        let mc = self.miner_controller.clone();
+        tokio::spawn(async move {
+            mc.lock()
+                .await
+                .kill_tx
+                .send(())
+                .await
+                .expect("Could not send kill");
+        });
     }
 
     fn show_device_settings(&mut self, ui: &mut egui::Ui) {
@@ -148,39 +149,23 @@ impl MinerApp {
     }
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
-        self.update_output_buffer();
         // The output box
         ui.separator();
-        egui::ScrollArea::vertical().stick_to_bottom().show(ui, |ui| {
-//            let mut o = String::new();
-            //for x in 0..1000 {
-                //o.push_str("Beer is the mind killer. ");
-            //}
-            ui.with_layout(
-                egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
-                |ui| {
-                    ui.label(&self.output);
-                    //ui.label(&o);
-                },
-            );
-        });
-    }
-
-    /// Copies the child_handle sout to the output_buffer
-    fn update_output_buffer(&mut self) {
-        match self.child_handle.as_mut() {
-            Some(x) => {
-                match x.stdout.as_mut() {
-                    Some(out) => {
-                        //let mut buf = [0;32];
-                        //let num_bytes = out.read(&mut buf).unwrap();
-                        //println!("The bytes: {:?}", &buf[..num_bytes]);
-                    }
-                    None => {println!("Stdout None!");}
+        egui::ScrollArea::vertical()
+            .stick_to_bottom()
+            .show(ui, |ui| {
+                let mut o = String::new();
+                for x in 0..1000 {
+                    o.push_str("Beer is the mind killer. ");
                 }
-            }
-            None => {}
-        }
+                ui.with_layout(
+                    egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
+                    |ui| {
+                        //ui.label(&self.output);
+                        ui.label(&o);
+                    },
+                );
+            });
     }
 }
 
@@ -189,8 +174,7 @@ impl Default for MinerApp {
         Self {
             settings: MinerSettings::default(),
             temp_settings: MinerSettings::default(),
-            child_handle: None,
-            output: String::new()
+            miner_controller: MinerController::new(),
         }
     }
 }
