@@ -60,7 +60,7 @@ pub struct MinerApp {
     temp_settings: MinerSettings,
     miner_controller: Arc<Mutex<MinerController>>,
     buffer: Arc<Mutex<Vec<String>>>,
-    app_context: Arc<Mutex<Option<egui::CtxRef>>>,
+    repaint_signal: Arc<Mutex<Option<Arc<dyn epi::RepaintSignal>>>>,
 }
 
 impl MinerApp {
@@ -93,18 +93,15 @@ impl MinerApp {
 
     fn start_updater(&mut self, sender: tokio::sync::broadcast::Sender<()>) {
         let mut rcv = sender.subscribe();
-        let context = self.app_context.clone();
-        tokio::spawn(async move {
+        let repaint_signal = self.repaint_signal.clone();
+        tokio::task::spawn(async move {
             loop {
                 if rcv.recv().await.is_ok() {
                     println!("update requested");
-                    if let Some(c) = context.lock().await.as_mut() {
-                        println!("repainting");
-                        c.request_repaint();
-                    }
-                    else {
-                        println!("None!");
-                    }
+                    if let Some(repaint) = repaint_signal.lock().await.as_mut() {
+                        println!("repaint signal repainting");
+                        repaint.request_repaint();
+                    } 
                 }
             }
         });
@@ -175,19 +172,6 @@ impl MinerApp {
         ui.separator();
         egui::ScrollArea::vertical()
             .stick_to_bottom()
-            //            .show(ui, |ui| {
-            //                let mut o = String::new();
-            //                for x in 0..1000 {
-            //                    o.push_str("Beer is the mind killer. ");
-            //                }
-            //                ui.with_layout(
-            //                    egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
-            //                    |ui| {
-            //                        //ui.label(&self.output);
-            //                        ui.label(&o);
-            //                    },
-            //                );
-            //            });
             .show(ui, |ui| {
                 tokio::task::block_in_place(move || {
                     let b: &Vec<String> = &*self.buffer.blocking_lock();
@@ -206,14 +190,21 @@ impl Drop for MinerApp {
 }
 
 impl epi::App for MinerApp {
-    fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
-
+    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+        println!("Update");
         tokio::task::block_in_place(|| {
-            let mut context = self.app_context.blocking_lock();
-            if context.is_none() {
-                *context = Some(ctx.clone());
-            }
+            let mut repaint = self.repaint_signal.blocking_lock();
+            *repaint = Some(frame.repaint_signal());
         });
+        // TODO
+        // this block works at repainting.
+        // just have to figure out why the 'start_updater' can't work
+//        tokio::task::block_in_place(|| {
+//            let mut context = self.app_context.blocking_lock();
+//            if let Some(x) = context.as_mut() {
+//                x.request_repaint();
+//            }
+//        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.collapsing("Miner Settings", |ui| {
@@ -315,7 +306,7 @@ async fn main() {
         temp_settings: MinerSettings::default(),
         miner_controller: mc.clone(),
         buffer,
-        app_context: Arc::new(Mutex::new(None)),
+        repaint_signal: Arc::new(Mutex::new(None)),
     };
 
     let update_tx = mc.lock().await.updated_tx.clone();
