@@ -169,10 +169,10 @@ impl MinerApp {
             //                );
             //            });
             .show(ui, |ui| {
-//                let b: &Vec<String> = &*self.buffer.blocking_lock();
-//                b.into_iter().for_each(|line| {
-//                    ui.label(line);
-//                });
+                let b: &Vec<String> = &*self.buffer.blocking_lock();
+                b.into_iter().for_each(|line| {
+                    ui.label(line);
+                });
             });
     }
 }
@@ -278,8 +278,8 @@ impl epi::App for MinerApp {
 #[tokio::main]
 async fn main() {
     let mc = MinerController::new();
-    //let buffer = mc.blocking_lock().buffer.clone();
-    let buffer = Arc::new(Mutex::new(Vec::new()));
+    let buffer = mc.lock().await.buffer.clone();
+    //let buffer = Arc::new(Mutex::new(Vec::new()));
     let app: MinerApp = MinerApp {
         settings: MinerSettings::default(),
         temp_settings: MinerSettings::default(),
@@ -287,6 +287,7 @@ async fn main() {
         buffer,
     };
     let native_options = eframe::NativeOptions::default();
+
     eframe::run_native(Box::new(app), native_options);
 }
 
