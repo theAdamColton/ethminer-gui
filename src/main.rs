@@ -60,13 +60,18 @@ pub struct MinerApp {
     settings: Arc<MinerSettings>,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
+    /// Reference to the MinerController
     miner_controller: Arc<Mutex<MinerController>>,
+    /// Reference to the output of the miner process
     buffer: Arc<Mutex<Vec<String>>>,
+    /// Reference to the repaint_signal, which is sent to when receiving
+    /// updates from the controller
     repaint_signal: Arc<Mutex<Option<Arc<dyn epi::RepaintSignal>>>>,
 }
 
 impl MinerApp {
     /// Aquires the lock and sends to the spawn channel
+    /// Sends a reference to the MinerSettings to the controller
     fn run_ethminer(&self) {
         let mc = self.miner_controller.clone();
         let settings = self.settings.clone();
@@ -94,6 +99,8 @@ impl MinerApp {
         });
     }
 
+    /// Starts the listener for the update channel, 
+    /// requests repaint when receiving the update signal
     fn start_updater(&mut self, sender: tokio::sync::broadcast::Sender<()>) {
         let mut rcv = sender.subscribe();
         let repaint_signal = self.repaint_signal.clone();
@@ -171,7 +178,6 @@ impl MinerApp {
     }
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
-        // sends buffer update request every redraw, maybe this is not good
         egui::ScrollArea::vertical()
             .stick_to_bottom()
             .show(ui, |ui| {
@@ -297,7 +303,6 @@ impl epi::App for MinerApp {
 async fn main() {
     let mc = MinerController::new();
     let buffer = mc.lock().await.buffer.clone();
-    //let buffer = Arc::new(Mutex::new(Vec::new()));
     let mut app: MinerApp = MinerApp {
         settings: Arc::new(MinerSettings::default()),
         temp_settings: MinerSettings::default(),

@@ -14,7 +14,6 @@ pub struct MinerController {
     /// Send with this to cause the minerController to kill the process if it exists
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
-    ///
     pub spawn_tx: Sender<Arc<MinerSettings>>,
     /// Send to this when the buffer has been updated, and the view should redraw
     /// Subscribe to this to get the send updates
@@ -86,10 +85,8 @@ impl MinerController {
     }
 
     #[allow(unused_must_use)]
-    /// This is a blocking function that will update the buffer based on the
-    /// output of the child_handle process
-    /// This function returrns a handle to the task that will return the sender so
-    /// it can be reused
+    /// This function is run by spawn_miner, and starts a task that appends
+    /// the output of the child_handle process to the output buffer
     async fn update_buffer(&mut self, updated_tx: tokio::sync::broadcast::Sender<()>) {
         if let Some(child_handle) = self.child_handle.as_mut() {
             let stdout: ChildStdout = child_handle.stdout.take().expect("No child stdout");
