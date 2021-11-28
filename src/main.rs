@@ -60,6 +60,7 @@ pub struct MinerApp {
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
     miner_controller: Arc<Mutex<MinerController>>,
+    buffer: Arc<Mutex<Vec<String>>>,
 }
 
 impl MinerApp {
@@ -168,17 +169,11 @@ impl MinerApp {
             //                );
             //            });
             .show(ui, |ui| {
+//                let b: &Vec<String> = &*self.buffer.blocking_lock();
+//                b.into_iter().for_each(|line| {
+//                    ui.label(line);
+//                });
             });
-    }
-}
-
-impl Default for MinerApp {
-    fn default() -> Self {
-        Self {
-            settings: MinerSettings::default(),
-            temp_settings: MinerSettings::default(),
-            miner_controller: MinerController::new(),
-        }
     }
 }
 
@@ -282,7 +277,15 @@ impl epi::App for MinerApp {
 
 #[tokio::main]
 async fn main() {
-    let app: MinerApp = MinerApp::default();
+    let mc = MinerController::new();
+    //let buffer = mc.blocking_lock().buffer.clone();
+    let buffer = Arc::new(Mutex::new(Vec::new()));
+    let app: MinerApp = MinerApp {
+        settings: MinerSettings::default(),
+        temp_settings: MinerSettings::default(),
+        miner_controller: mc,
+        buffer,
+    };
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);
 }
