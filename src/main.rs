@@ -60,6 +60,7 @@ pub struct MinerApp {
     temp_settings: MinerSettings,
     miner_controller: Arc<Mutex<MinerController>>,
     buffer: Arc<Mutex<Vec<String>>>,
+    app_context: Option<egui::CtxRef>,
 }
 
 impl MinerApp {
@@ -80,12 +81,28 @@ impl MinerApp {
     fn kill_child_miner(&self) {
         let mc = self.miner_controller.clone();
         tokio::spawn(async move {
+            println!("spawned");
             mc.lock()
                 .await
                 .kill_tx
                 .send(())
                 .await
                 .expect("Could not send kill");
+        });
+    }
+
+    fn start_updater(&self, rcv: &tokio::sync::watch::Receiver<()>) {
+        let mut ctx = self.app_context.clone();
+        let mut rcv = rcv.clone();
+        tokio::spawn(async move {
+            loop {
+                while rcv.changed().await.is_ok() {
+                    println!("update requested");
+                    if let Some(c) = ctx.as_mut() {
+                        c.request_repaint();
+                    }
+                }
+            }
         });
     }
 
@@ -186,6 +203,9 @@ impl Drop for MinerApp {
 
 impl epi::App for MinerApp {
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
+        if self.app_context.is_none() {
+            self.app_context = Some(ctx.clone());
+        }
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.collapsing("Miner Settings", |ui| {
                 ui.collapsing("Pool Settings", |ui| {
@@ -284,9 +304,15 @@ async fn main() {
     let app: MinerApp = MinerApp {
         settings: MinerSettings::default(),
         temp_settings: MinerSettings::default(),
-        miner_controller: mc,
+        miner_controller: mc.clone(),
         buffer,
+        app_context: None,
     };
+
+    // broken
+    //let update_rx = &mc.lock().await.updated_rx;
+    //app.start_updater(update_rx);
+
     let native_options = eframe::NativeOptions::default();
 
     eframe::run_native(Box::new(app), native_options);

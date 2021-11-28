@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 use tokio::sync::{
     mpsc,
     mpsc::{Receiver, Sender},
@@ -14,6 +15,8 @@ pub struct MinerController {
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
     pub spawn_tx: Sender<()>,
+    /// This is sent to when the buffer has been updated, and the view should redraw
+    pub updated_rx: tokio::sync::broadcast::Receiver<()>,
     /// The handle to the child process
     child_handle: Option<Child>,
     /// Contains the output of the miner
@@ -26,9 +29,12 @@ impl MinerController {
     pub fn new() -> Arc<Mutex<MinerController>> {
         let (kill_tx, mut kill_rx) = mpsc::channel(2);
         let (spawn_tx, mut spawn_rx) = mpsc::channel(2);
+        let (mut updated_tx, updated_rx) = tokio::sync::broadcast::channel(2);
+
         let controller = Arc::new(Mutex::new(MinerController {
             kill_tx,
             spawn_tx,
+            updated_rx,
             child_handle: None,
             buffer: Arc::new(Mutex::new(Vec::new())),
         }));
@@ -53,7 +59,8 @@ impl MinerController {
                     {
                         let mut mc = controller3.lock().await;
                         mc.spawn_miner().await;
-                        mc.update_buffer().await;
+                        mc.update_buffer(updated_tx.clone()).await;
+                        println!("Handle returned");
                     }
                 }
             }
@@ -78,30 +85,26 @@ impl MinerController {
 
     /// This is a blocking function that will update the buffer based on the
     /// output of the child_handle process
-    async fn update_buffer(&mut self) {
+    /// This function returrns a handle to the task that will return the sender so
+    /// it can be reused
+    async fn update_buffer(&mut self, updated_tx: tokio::sync::broadcast::Sender<()>) {
         if let Some(child_handle) = self.child_handle.as_mut() {
             let stdout: ChildStdout = child_handle.stdout.take().expect("No child stdout");
 
-//            let buf = BufReader::new(stdout);
-//            let mut lines = buf.lines();
-//            while let Some(line) = lines.next_line().await.unwrap() {
-//                //println!(" > {}", &line);
-//                self.buffer.lock().await.push(line);
-//            }
-//
             let buf = BufReader::new(stdout);
             let mut lines = buf.lines();
             let out = self.buffer.clone();
 
             // Spawns a thread to read the lines from the buffer as they 
             // are made available
-            tokio::spawn(async move {
+            let handle = tokio::spawn(async move {
                 while let Some(line) = lines.next_line().await.unwrap() {
                     println!(" > {}", &line);
                     out.lock().await.push(line);
+                    updated_tx.send(()).expect("Failed to transmit update channel");
                 }
+                return updated_tx;
             });
-
         }
     }
 
