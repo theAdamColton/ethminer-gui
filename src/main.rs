@@ -51,7 +51,6 @@ use miner_controller::MinerController;
 use eframe::{egui, epi};
 use miner_settings::*;
 
-use image;
 use std::sync::Arc;
 use tokio;
 use tokio::sync::Mutex;

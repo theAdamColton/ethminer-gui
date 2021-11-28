@@ -85,6 +85,7 @@ impl MinerController {
         self.child_handle = Some(cmd);
     }
 
+    #[allow(unused_must_use)]
     /// This is a blocking function that will update the buffer based on the
     /// output of the child_handle process
     /// This function returrns a handle to the task that will return the sender so

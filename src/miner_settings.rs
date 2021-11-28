@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 /// Defines cli settings to be passed to ethminer
 pub struct MinerSettings {
     /// Multiple Url flags are allowed to be specified
@@ -186,6 +184,7 @@ pub struct Scheme {
 }
 
 #[derive(ToString, PartialEq, Clone)]
+#[allow(non_camel_case_types)]
 pub enum Stratum {
     stratum,
     stratum1,
@@ -194,6 +193,8 @@ pub enum Stratum {
 }
 
 #[derive(ToString, PartialEq, Clone)]
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
 pub enum Transport {
     tcp,
     tls,
