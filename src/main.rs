@@ -47,7 +47,6 @@ extern crate strum_macros;
 use miner_controller::MinerController;
 
 use eframe::{egui, epi};
-use egui::TextStyle;
 use miner_state::*;
 
 use std::sync::Arc;
@@ -169,9 +168,11 @@ impl MinerApp {
             //                );
             //            });
             .show(ui, |ui| {
-                let b: &Vec<String> = &*self.buffer.blocking_lock();
-                b.into_iter().for_each(|line| {
-                    ui.label(line);
+                tokio::task::block_in_place(move || {
+                    let b: &Vec<String> = &*self.buffer.blocking_lock();
+                    b.into_iter().for_each(|line| {
+                        ui.label(line);
+                    });
                 });
             });
     }
