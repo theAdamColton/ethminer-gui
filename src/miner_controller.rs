@@ -3,18 +3,18 @@ use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
-use tokio::sync::{
-    mpsc,
-    mpsc::{Receiver, Sender},
-};
+use tokio::sync::{mpsc, mpsc::Sender};
+use console::strip_ansi_codes;
 use tokio::time::{sleep, Duration};
+
+use crate::miner_settings::MinerSettings;
 
 pub struct MinerController {
     /// Send with this to cause the minerController to kill the process if it exists
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
-    pub spawn_tx: Sender<()>,
+    ///
+    pub spawn_tx: Sender<Arc<MinerSettings>>,
     /// Send to this when the buffer has been updated, and the view should redraw
     /// Subscribe to this to get the send updates
     pub updated_tx: tokio::sync::broadcast::Sender<()>,
@@ -55,11 +55,11 @@ impl MinerController {
         // Starts a thread that kills and then spawns when receiving the spawn signal
         tokio::spawn(async move {
             loop {
-                if let Some(()) = spawn_rx.recv().await {
+                if let Some(miner_settings) = spawn_rx.recv().await {
                     println!("recv spawn");
                     {
                         let mut mc = controller3.lock().await;
-                        mc.spawn_miner().await;
+                        mc.spawn_miner(miner_settings).await;
                         mc.update_buffer(updated_tx.clone()).await;
                         println!("Handle returned");
                     }
@@ -71,15 +71,21 @@ impl MinerController {
     }
 
     /// This function is run by the spawn_rx on receiving
-    async fn spawn_miner(&mut self) {
+    async fn spawn_miner(&mut self, miner_settings: Arc<MinerSettings>) {
         self.kill_miner().await;
 
         println!("Spawning...");
-        let cmd = Command::new("ping")
-            .arg("google.com")
-            .stdout(Stdio::piped()) // Can do the same for stderr
+        // ping testing command
+        //        let cmd = Command::new("ping")
+        //            .arg("google.com")
+        //            .stdout(Stdio::piped()) // Can do the same for stderr
+        //            .spawn()
+        //            .expect("cannot spawn");
+        let cmd = Command::new(miner_settings.bin_path.to_owned())
+            .args(miner_settings.render())
+            .stdout(Stdio::piped())
             .spawn()
-            .expect("cannot spawn");
+            .expect("Cannot spawn ethminer");
 
         self.child_handle = Some(cmd);
     }
@@ -96,16 +102,15 @@ impl MinerController {
             let mut lines = buf.lines();
             let out = self.buffer.clone();
 
-            // Spawns a thread to read the lines from the buffer as they 
+            // Spawns a thread to read the lines from the buffer as they
             // are made available
-            let handle = tokio::spawn(async move {
+            tokio::spawn(async move {
                 while let Some(line) = lines.next_line().await.unwrap() {
                     println!(" > {}", &line);
-                    out.lock().await.push(line);
+                    out.lock().await.push(strip_ansi_codes(&line).to_string());
                     // I don't care if this fails if the rx is not recieving
                     updated_tx.send(());
                 }
-                return updated_tx;
             });
         }
     }

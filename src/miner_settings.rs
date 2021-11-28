@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 /// Defines cli settings to be passed to ethminer
 pub struct MinerSettings {
     /// Multiple Url flags are allowed to be specified
@@ -20,6 +22,13 @@ impl Default for MinerSettings {
     }
 }
 
+impl std::fmt::Debug for MinerSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MinerSettings")
+        .finish()
+    }
+}
+
 impl Clone for MinerSettings {
     fn clone(&self) -> Self {
         Self {
@@ -35,6 +44,8 @@ impl MinerSettings {
     /// Render settings into valid cli args
     pub fn render(&self) -> Vec<String> {
         let mut out = Vec::new();
+        // For stdout instead of stderr to make reading the output stream easier
+        out.push("--stdout".to_string());
         match &self.device_type {
             Some(s) => {
                 out.append(&mut s.render());

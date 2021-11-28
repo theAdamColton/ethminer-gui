@@ -38,7 +38,7 @@ mod miner_controller;
  |_________________|
 
 */
-mod miner_state;
+mod miner_settings;
 
 extern crate strum;
 #[macro_use]
@@ -47,7 +47,7 @@ extern crate strum_macros;
 use miner_controller::MinerController;
 
 use eframe::{egui, epi};
-use miner_state::*;
+use miner_settings::*;
 
 use std::sync::Arc;
 use tokio;
@@ -55,7 +55,7 @@ use tokio::sync::Mutex;
 
 pub struct MinerApp {
     /// Stores the currently used settings
-    settings: MinerSettings,
+    settings: Arc<MinerSettings>,
     /// Stores the settings that haven't been applied yet
     temp_settings: MinerSettings,
     miner_controller: Arc<Mutex<MinerController>>,
@@ -67,11 +67,12 @@ impl MinerApp {
     /// Aquires the lock and sends to the spawn channel
     fn run_ethminer(&self) {
         let mc = self.miner_controller.clone();
+        let settings = self.settings.clone();
         tokio::spawn(async move {
             mc.lock()
                 .await
                 .spawn_tx
-                .send(())
+                .send(settings)
                 .await
                 .expect("Could not send spawn");
         });
@@ -191,20 +192,12 @@ impl Drop for MinerApp {
 
 impl epi::App for MinerApp {
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
-        println!("Update");
         tokio::task::block_in_place(|| {
             let mut repaint = self.repaint_signal.blocking_lock();
-            *repaint = Some(frame.repaint_signal());
+            if repaint.is_none() {
+                *repaint = Some(frame.repaint_signal());
+            }
         });
-        // TODO
-        // this block works at repainting.
-        // just have to figure out why the 'start_updater' can't work
-//        tokio::task::block_in_place(|| {
-//            let mut context = self.app_context.blocking_lock();
-//            if let Some(x) = context.as_mut() {
-//                x.request_repaint();
-//            }
-//        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.collapsing("Miner Settings", |ui| {
@@ -273,10 +266,10 @@ impl epi::App for MinerApp {
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
                         // Cancel temp_settings
-                        self.temp_settings = self.settings.clone();
+                        self.temp_settings = (*self.settings).clone();
                     }
                     if ui.button("Apply").clicked() {
-                        self.settings = self.temp_settings.clone();
+                        self.settings = Arc::new(self.temp_settings.clone());
                         println!("{:?}", &self.settings.render());
                     }
                     if ui.button("Run").clicked() {
@@ -302,7 +295,7 @@ async fn main() {
     let buffer = mc.lock().await.buffer.clone();
     //let buffer = Arc::new(Mutex::new(Vec::new()));
     let mut app: MinerApp = MinerApp {
-        settings: MinerSettings::default(),
+        settings: Arc::new(MinerSettings::default()),
         temp_settings: MinerSettings::default(),
         miner_controller: mc.clone(),
         buffer,
