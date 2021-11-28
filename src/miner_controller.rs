@@ -102,7 +102,8 @@ impl MinerController {
                 while let Some(line) = lines.next_line().await.unwrap() {
                     println!(" > {}", &line);
                     out.lock().await.push(line);
-                    updated_tx.send(()).expect("Failed to transmit update channel");
+                    // I don't care if this fails if the rx is not recieving
+                    updated_tx.send(());
                 }
                 return updated_tx;
             });

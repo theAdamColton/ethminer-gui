@@ -60,7 +60,7 @@ pub struct MinerApp {
     temp_settings: MinerSettings,
     miner_controller: Arc<Mutex<MinerController>>,
     buffer: Arc<Mutex<Vec<String>>>,
-    app_context: Option<egui::CtxRef>,
+    app_context: Arc<Mutex<Option<egui::CtxRef>>>,
 }
 
 impl MinerApp {
@@ -91,16 +91,19 @@ impl MinerApp {
         });
     }
 
-    fn start_updater(&self, sender: tokio::sync::broadcast::Sender<()>) {
-        let mut ctx = self.app_context.clone();
+    fn start_updater(&mut self, sender: tokio::sync::broadcast::Sender<()>) {
         let mut rcv = sender.subscribe();
+        let context = self.app_context.clone();
         tokio::spawn(async move {
             loop {
                 if rcv.recv().await.is_ok() {
                     println!("update requested");
-                    if let Some(c) = ctx.as_mut() {
-                        println!("Repaint requested", );
+                    if let Some(c) = context.lock().await.as_mut() {
+                        println!("repainting");
                         c.request_repaint();
+                    }
+                    else {
+                        println!("None!");
                     }
                 }
             }
@@ -204,9 +207,14 @@ impl Drop for MinerApp {
 
 impl epi::App for MinerApp {
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
-        if self.app_context.is_none() {
-            self.app_context = Some(ctx.clone());
-        }
+
+        tokio::task::block_in_place(|| {
+            let mut context = self.app_context.blocking_lock();
+            if context.is_none() {
+                *context = Some(ctx.clone());
+            }
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.collapsing("Miner Settings", |ui| {
                 ui.collapsing("Pool Settings", |ui| {
@@ -302,12 +310,12 @@ async fn main() {
     let mc = MinerController::new();
     let buffer = mc.lock().await.buffer.clone();
     //let buffer = Arc::new(Mutex::new(Vec::new()));
-    let app: MinerApp = MinerApp {
+    let mut app: MinerApp = MinerApp {
         settings: MinerSettings::default(),
         temp_settings: MinerSettings::default(),
         miner_controller: mc.clone(),
         buffer,
-        app_context: None,
+        app_context: Arc::new(Mutex::new(None)),
     };
 
     let update_tx = mc.lock().await.updated_tx.clone();
