@@ -15,8 +15,9 @@ pub struct MinerController {
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
     pub spawn_tx: Sender<()>,
-    /// This is sent to when the buffer has been updated, and the view should redraw
-    pub updated_rx: tokio::sync::broadcast::Receiver<()>,
+    /// Send to this when the buffer has been updated, and the view should redraw
+    /// Subscribe to this to get the send updates
+    pub updated_tx: tokio::sync::broadcast::Sender<()>,
     /// The handle to the child process
     child_handle: Option<Child>,
     /// Contains the output of the miner
@@ -29,12 +30,12 @@ impl MinerController {
     pub fn new() -> Arc<Mutex<MinerController>> {
         let (kill_tx, mut kill_rx) = mpsc::channel(2);
         let (spawn_tx, mut spawn_rx) = mpsc::channel(2);
-        let (mut updated_tx, updated_rx) = tokio::sync::broadcast::channel(2);
+        let (updated_tx, _) = tokio::sync::broadcast::channel(2);
 
         let controller = Arc::new(Mutex::new(MinerController {
             kill_tx,
             spawn_tx,
-            updated_rx,
+            updated_tx: updated_tx.clone(),
             child_handle: None,
             buffer: Arc::new(Mutex::new(Vec::new())),
         }));

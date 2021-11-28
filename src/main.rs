@@ -91,14 +91,15 @@ impl MinerApp {
         });
     }
 
-    fn start_updater(&self, rcv: &tokio::sync::watch::Receiver<()>) {
+    fn start_updater(&self, sender: tokio::sync::broadcast::Sender<()>) {
         let mut ctx = self.app_context.clone();
-        let mut rcv = rcv.clone();
+        let mut rcv = sender.subscribe();
         tokio::spawn(async move {
             loop {
-                while rcv.changed().await.is_ok() {
+                if rcv.recv().await.is_ok() {
                     println!("update requested");
                     if let Some(c) = ctx.as_mut() {
+                        println!("Repaint requested", );
                         c.request_repaint();
                     }
                 }
@@ -309,9 +310,8 @@ async fn main() {
         app_context: None,
     };
 
-    // broken
-    //let update_rx = &mc.lock().await.updated_rx;
-    //app.start_updater(update_rx);
+    let update_tx = mc.lock().await.updated_tx.clone();
+    app.start_updater(update_tx);
 
     let native_options = eframe::NativeOptions::default();
 
