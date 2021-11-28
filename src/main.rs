@@ -1,4 +1,6 @@
 mod miner_controller;
+mod miner_settings;
+mod icon_data;
 /**
     Adam Colton 2021
 
@@ -38,17 +40,18 @@ mod miner_controller;
  |_________________|
 
 */
-mod miner_settings;
 
 extern crate strum;
 #[macro_use]
 extern crate strum_macros;
 
+use icon_data::get_icon_data;
 use miner_controller::MinerController;
 
 use eframe::{egui, epi};
 use miner_settings::*;
 
+use image;
 use std::sync::Arc;
 use tokio;
 use tokio::sync::Mutex;
@@ -102,7 +105,7 @@ impl MinerApp {
                     if let Some(repaint) = repaint_signal.lock().await.as_mut() {
                         println!("repaint signal repainting");
                         repaint.request_repaint();
-                    } 
+                    }
                 }
             }
         });
@@ -170,7 +173,6 @@ impl MinerApp {
 
     fn show_ethminer_out(&mut self, ui: &mut egui::Ui) {
         // sends buffer update request every redraw, maybe this is not good
-        ui.separator();
         egui::ScrollArea::vertical()
             .stick_to_bottom()
             .show(ui, |ui| {
@@ -272,13 +274,16 @@ impl epi::App for MinerApp {
                         self.settings = Arc::new(self.temp_settings.clone());
                         println!("{:?}", &self.settings.render());
                     }
-                    if ui.button("Run").clicked() {
-                        self.run_ethminer();
-                    }
-                    if ui.button("Stop").clicked() {
-                        self.kill_child_miner();
-                    }
                 });
+            });
+            ui.separator();
+            ui.horizontal(|ui| {
+                if ui.button("Run").clicked() {
+                    self.run_ethminer();
+                }
+                if ui.button("Stop").clicked() {
+                    self.kill_child_miner();
+                }
             });
             self.show_ethminer_out(ui);
         });
@@ -305,7 +310,16 @@ async fn main() {
     let update_tx = mc.lock().await.updated_tx.clone();
     app.start_updater(update_tx);
 
-    let native_options = eframe::NativeOptions::default();
+    let mut native_options = eframe::NativeOptions::default();
+
+    // Gets the icon
+    let icon: Vec<u8> = get_icon_data();
+    let icon_data = epi::IconData {
+        rgba: icon,
+        width: 64,
+        height: 64,
+    };
+    native_options.icon_data = Some(icon_data);
 
     eframe::run_native(Box::new(app), native_options);
 }

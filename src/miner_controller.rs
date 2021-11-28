@@ -5,10 +5,11 @@ use tokio::process::{Child, ChildStdout, Command};
 use tokio::sync::Mutex;
 use tokio::sync::{mpsc, mpsc::Sender};
 use console::strip_ansi_codes;
-use tokio::time::{sleep, Duration};
 
 use crate::miner_settings::MinerSettings;
 
+/// Async controller for the child mining process.
+/// Interaction with MinerController is done via tokio channels
 pub struct MinerController {
     /// Send with this to cause the minerController to kill the process if it exists
     pub kill_tx: Sender<()>,
@@ -20,7 +21,7 @@ pub struct MinerController {
     pub updated_tx: tokio::sync::broadcast::Sender<()>,
     /// The handle to the child process
     child_handle: Option<Child>,
-    /// Contains the output of the miner
+    /// Contains the output of the miner as a Vec of the lines
     pub buffer: Arc<Mutex<Vec<String>>>,
 }
 
@@ -75,12 +76,6 @@ impl MinerController {
         self.kill_miner().await;
 
         println!("Spawning...");
-        // ping testing command
-        //        let cmd = Command::new("ping")
-        //            .arg("google.com")
-        //            .stdout(Stdio::piped()) // Can do the same for stderr
-        //            .spawn()
-        //            .expect("cannot spawn");
         let cmd = Command::new(miner_settings.bin_path.to_owned())
             .args(miner_settings.render())
             .stdout(Stdio::piped())
