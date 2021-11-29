@@ -1,3 +1,6 @@
+// This make the compiled windows app not launch with a console window
+#![windows_subsystem = "windows"]
+
 mod icon_data;
 mod miner_controller;
 mod miner_settings;
