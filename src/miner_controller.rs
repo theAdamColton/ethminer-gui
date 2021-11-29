@@ -65,9 +65,9 @@ impl MinerController {
                     println!("recv spawn");
                     {
                         let mut mc = controller3.lock().await;
-                        mc.spawn_miner(miner_settings).await;
-                        mc.update_buffer(updated_tx.clone()).await;
-                        println!("Handle returned");
+                        if mc.spawn_miner(miner_settings).await {
+                            mc.update_buffer(updated_tx.clone()).await;
+                        }
                     }
                 }
             }
@@ -77,7 +77,8 @@ impl MinerController {
     }
 
     /// This function is run by the spawn_rx on receiving
-    async fn spawn_miner(&mut self, miner_settings: Arc<MinerSettings>) {
+    /// returns true if the child was spawned
+    async fn spawn_miner(&mut self, miner_settings: Arc<MinerSettings>) -> bool {
         self.kill_miner().await;
 
         println!("Spawning...");
@@ -89,13 +90,17 @@ impl MinerController {
         match cmd {
             Ok(child) => {
                 self.child_handle = Some(child);
+                true
             }
-            Err(_) => {
+            Err(error) => {
                 // TODO more extensive error matching with specific message for
                 // missing executable etc.
+
+                println!("Error spawning: {:?}", error);
                 self.error_tx
                     .send("Error spawing ethminer!")
                     .expect("Failed to send error message");
+                false
             }
         }
     }
