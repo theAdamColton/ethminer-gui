@@ -1,10 +1,10 @@
+use console::strip_ansi_codes;
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
 use tokio::sync::Mutex;
 use tokio::sync::{mpsc, mpsc::Sender};
-use console::strip_ansi_codes;
 
 use crate::miner_settings::MinerSettings;
 
@@ -18,6 +18,10 @@ pub struct MinerController {
     /// Send to this when the buffer has been updated, and the view should redraw
     /// Subscribe to this to get the send updates
     pub updated_tx: tokio::sync::broadcast::Sender<()>,
+    /// Send to this when a recoverable error has been encountered
+    /// Subscribe to this to get informatino on recoverable errors
+    /// With the error message string
+    pub error_tx: tokio::sync::broadcast::Sender<&'static str>,
     /// The handle to the child process
     child_handle: Option<Child>,
     /// Contains the output of the miner as a Vec of the lines
@@ -31,11 +35,13 @@ impl MinerController {
         let (kill_tx, mut kill_rx) = mpsc::channel(2);
         let (spawn_tx, mut spawn_rx) = mpsc::channel(2);
         let (updated_tx, _) = tokio::sync::broadcast::channel(2);
+        let (error_tx, _) = tokio::sync::broadcast::channel(10);
 
         let controller = Arc::new(Mutex::new(MinerController {
             kill_tx,
             spawn_tx,
             updated_tx: updated_tx.clone(),
+            error_tx: error_tx.clone(),
             child_handle: None,
             buffer: Arc::new(Mutex::new(Vec::new())),
         }));
@@ -78,10 +84,20 @@ impl MinerController {
         let cmd = Command::new(miner_settings.bin_path.to_owned())
             .args(miner_settings.render())
             .stdout(Stdio::piped())
-            .spawn()
-            .expect("Cannot spawn ethminer");
+            .spawn();
 
-        self.child_handle = Some(cmd);
+        match cmd {
+            Ok(child) => {
+                self.child_handle = Some(child);
+            }
+            Err(_) => {
+                // TODO more extensive error matching with specific message for
+                // missing executable etc.
+                self.error_tx
+                    .send("Error spawing ethminer!")
+                    .expect("Failed to send error message");
+            }
+        }
     }
 
     #[allow(unused_must_use)]
