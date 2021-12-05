@@ -112,9 +112,7 @@ impl MinerApp {
         tokio::task::spawn(async move {
             loop {
                 if rcv.recv().await.is_ok() {
-                    println!("update requested");
                     if let Some(repaint) = repaint_signal.lock().await.as_mut() {
-                        println!("repaint signal repainting");
                         repaint.request_repaint();
                     }
                 }

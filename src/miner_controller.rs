@@ -3,8 +3,9 @@ use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command};
-use tokio::sync::Mutex;
+use tokio::sync::{broadcast, oneshot, Mutex};
 use tokio::sync::{mpsc, mpsc::Sender};
+use tokio::time::sleep;
 
 use crate::miner_settings::MinerSettings;
 
@@ -22,7 +23,7 @@ pub struct MinerController {
     /// Subscribe to this to get informatino on recoverable errors
     /// With the error message string
     pub error_tx: tokio::sync::broadcast::Sender<&'static str>,
-    /// The handle to the child process
+    /// The handle to the child process. This only set to None when the child is killed intentionally.
     child_handle: Option<Child>,
     /// Contains the output of the miner as a Vec of the lines
     pub buffer: Arc<Mutex<Vec<String>>>,
@@ -65,7 +66,14 @@ impl MinerController {
                     println!("recv spawn");
                     {
                         let mut mc = controller3.lock().await;
+                        let miner_setttings_clone = miner_settings.clone();
+
                         if mc.spawn_miner(miner_settings).await {
+                            let controller = controller3.clone();
+                            tokio::spawn(async move {
+                                MinerController::spawn_child_exited_checker(controller, miner_setttings_clone).await;
+                            });
+
                             mc.update_buffer(updated_tx.clone()).await;
                         }
                     }
@@ -74,6 +82,37 @@ impl MinerController {
         });
 
         controller
+    }
+
+    /// Checks every few seconds if the child process has exited
+    /// If it has, it will send on the child_died_tx channel, and exit
+    async fn spawn_child_exited_checker(controller: Arc<Mutex<MinerController>>, miner_settings: Arc<MinerSettings>) {
+        loop {
+            sleep(tokio::time::Duration::from_secs(7)).await;
+            println!("checking if child died...",);
+            let mut mc = controller.lock().await;
+            match mc.child_handle.as_mut() {
+                // If child is Some, child has not been killed intentionally
+                Some(child) => {
+                    match child.try_wait() {
+                        Ok(option_exit) => {
+                            if option_exit.is_some() {
+                                // The child has exited, without being killed intentionally
+                                println!("Miner has exited unexpectedly!");
+                                mc.child_handle = None;
+                                mc.spawn_tx.send(miner_settings).await.unwrap();
+                                return;
+                            }
+                        }
+                        Err(_) => {}
+                    }
+                }
+                // If child is None, the child was killed intentionally
+                None => {
+                    return;
+                }
+            }
+        }
     }
 
     /// This function is run by the spawn_rx on receiving
