@@ -160,7 +160,11 @@ impl MinerController {
             tokio::spawn(async move {
                 while let Some(line) = lines.next_line().await.unwrap() {
                     println!(" > {}", &line);
-                    out.lock().await.push(strip_ansi_codes(&line).to_string());
+                    let mut o = out.lock().await;
+                    o.push(strip_ansi_codes(&line).to_string());
+                    if o.len() > 200 {
+                        o.remove(0);
+                    }
                     // I don't care if this fails if the rx is not recieving
                     updated_tx.send(());
                 }
