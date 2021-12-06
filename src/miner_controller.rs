@@ -99,6 +99,12 @@ impl MinerController {
                             if option_exit.is_some() {
                                 // The child has exited, without being killed intentionally
                                 println!("Miner has exited unexpectedly!");
+                                {
+                                    let mut buf = mc.buffer.lock().await;
+                                    buf.push("".to_string());
+                                    buf.push("***** Miner Crashed! *****".to_string());
+                                    buf.push("***** Restarting.... *****".to_string());
+                                }
                                 mc.child_handle = None;
                                 mc.spawn_tx.send(miner_settings).await.unwrap();
                                 return;
@@ -179,6 +185,11 @@ impl MinerController {
             println!("Killing");
             x.kill().await.expect("Could not kill");
             self.child_handle = None;
+            {
+                let mut buf = self.buffer.lock().await;
+                buf.push("".to_string());
+                buf.push("***** Killed miner *****".to_string());
+            }
         }
     }
 }

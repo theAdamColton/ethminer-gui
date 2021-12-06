@@ -202,7 +202,9 @@ impl MinerApp {
                 tokio::task::block_in_place(move || {
                     let b: &Vec<String> = &*self.buffer.blocking_lock();
                     b.into_iter().for_each(|line| {
-                        ui.label(line);
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(line);
+                        });
                     });
                 });
             });
@@ -331,7 +333,10 @@ impl epi::App for MinerApp {
                     self.kill_child_miner();
                 }
             });
-            self.show_ethminer_out(ui);
+
+            ui.vertical_centered_justified(|ui| { 
+                self.show_ethminer_out(ui);
+            });
         });
     }
 
