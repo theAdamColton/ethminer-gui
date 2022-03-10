@@ -8,7 +8,7 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex;
 
 #[cfg(target_os = "linux")]
-struct MinerTrayLinux{
+struct MinerTrayLinux {
     miner_settings: Arc<RwLock<MinerSettings>>,
     miner_controller: Arc<Mutex<MinerController>>,
 }
@@ -24,20 +24,22 @@ impl ksni::Tray for MinerTrayLinux {
     }
 
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
-        vec![StandardItem {
-            label: "Exit".into(),
-            icon_name: "application-exit".into(),
-            activate: Box::new(|_| std::process::exit(0)),
-            ..Default::default()
-        }
-        .into(),
-        StandardItem {
-            label: "Start Miner".into(),
-            activate: Box::new(|_| {
-                //MinerController::run_ethminer(
-            }),
-            ..Default::default()
-        }.into(),
+        vec![
+            StandardItem {
+                label: "Exit".into(),
+                icon_name: "application-exit".into(),
+                activate: Box::new(|_| std::process::exit(0)),
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: "Start Miner".into(),
+                activate: Box::new(|this: &mut Self| {
+                    MinerController::run_ethminer(this.miner_controller.clone(), this.miner_settings.read().unwrap().clone());
+                }),
+                ..Default::default()
+            }
+            .into(),
         ]
     }
 
@@ -54,7 +56,10 @@ impl ksni::Tray for MinerTrayLinux {
 
 #[cfg(target_os = "linux")]
 pub fn start_tray_linux(ms: Arc<RwLock<MinerSettings>>, mc: Arc<Mutex<MinerController>>) {
-    let service = ksni::TrayService::new(MinerTrayLinux {miner_controller: mc, miner_settings: ms});
+    let service = ksni::TrayService::new(MinerTrayLinux {
+        miner_controller: mc,
+        miner_settings: ms,
+    });
     let handle = service.handle();
     service.spawn();
 }

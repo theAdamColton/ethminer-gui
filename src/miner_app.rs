@@ -2,13 +2,11 @@ use crate::icon_data::get_icon_rgba;
 use crate::miner_controller::MinerController;
 use crate::miner_settings::*;
 
+use eframe::{egui, epi};
 use std::sync::Arc;
 use std::sync::RwLock;
 use tokio;
 use tokio::sync::Mutex;
-use eframe::{egui, epi};
-
-
 
 pub struct MinerError(&'static str);
 
@@ -281,13 +279,19 @@ impl epi::App for MinerApp {
                 if ui.button("Apply").clicked() {
                     let mut settings = self.settings.write().unwrap();
                     *settings = self.temp_settings.clone();
-                    println!("Settings saved. New CLI options: {:?}", &self.settings.read().unwrap().render());
+                    println!(
+                        "Settings saved. New CLI options: {:?}",
+                        &self.settings.read().unwrap().render()
+                    );
                 }
             });
             ui.separator();
             ui.horizontal(|ui| {
                 if ui.button("Run").clicked() {
-                    MinerController::run_ethminer(self.miner_controller.clone(), self.settings.read().unwrap().clone());
+                    MinerController::run_ethminer(
+                        self.miner_controller.clone(),
+                        self.settings.read().unwrap().clone(),
+                    );
                 }
                 if ui.button("Stop").clicked() {
                     MinerController::kill_child_miner(self.miner_controller.clone());

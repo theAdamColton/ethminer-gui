@@ -71,7 +71,11 @@ impl MinerController {
                         if mc.spawn_miner(miner_settings).await {
                             let controller = controller3.clone();
                             tokio::spawn(async move {
-                                MinerController::spawn_child_exited_checker(controller, miner_setttings_clone).await;
+                                MinerController::spawn_child_exited_checker(
+                                    controller,
+                                    miner_setttings_clone,
+                                )
+                                .await;
                             });
 
                             mc.update_buffer(updated_tx.clone()).await;
@@ -86,7 +90,10 @@ impl MinerController {
 
     /// Checks every few seconds if the child process has exited
     /// If it has, it will send on the child_died_tx channel, and exit
-    async fn spawn_child_exited_checker(controller: Arc<Mutex<MinerController>>, miner_settings: MinerSettings) {
+    async fn spawn_child_exited_checker(
+        controller: Arc<Mutex<MinerController>>,
+        miner_settings: MinerSettings,
+    ) {
         loop {
             sleep(tokio::time::Duration::from_secs(7)).await;
             println!("checking if child died...",);
@@ -123,7 +130,6 @@ impl MinerController {
 
     /// Aquires the lock and sends to the kill channel
     pub fn kill_child_miner(mc: Arc<Mutex<MinerController>>) {
-        //let mc = miner_controller.clone();
         tokio::spawn(async move {
             println!("spawned");
             mc.lock()
@@ -138,7 +144,6 @@ impl MinerController {
     /// Aquires the lock and sends to the spawn channel
     /// Sends a reference to the MinerSettings to the controller
     pub fn run_ethminer(mc: Arc<Mutex<MinerController>>, miner_settings: MinerSettings) {
-        //let mc = miner_controller.clone();
         tokio::spawn(async move {
             mc.lock()
                 .await
@@ -148,8 +153,6 @@ impl MinerController {
                 .expect("Could not send spawn");
         });
     }
-
-
 
     /// This function is run by the spawn_rx on receiving
     /// returns true if the child was spawned
