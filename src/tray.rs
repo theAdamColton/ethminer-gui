@@ -1,10 +1,17 @@
 use crate::icon_data::get_icon_argb;
+use crate::miner_controller::MinerController;
+use crate::miner_settings::*;
+
 use ksni;
 use ksni::menu::*;
+use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex;
 
-#[derive(Debug)]
 #[cfg(target_os = "linux")]
-struct MinerTrayLinux;
+struct MinerTrayLinux{
+    miner_settings: Arc<RwLock<MinerSettings>>,
+    miner_controller: Arc<Mutex<MinerController>>,
+}
 
 #[cfg(target_os = "linux")]
 impl ksni::Tray for MinerTrayLinux {
@@ -24,11 +31,13 @@ impl ksni::Tray for MinerTrayLinux {
             ..Default::default()
         }
         .into(),
-//        StandardItem {
-//            label: "Start Miner".into(),
-//            activate: Box::new(|_| 
-//            ..Default::default()
-//        }.into(),
+        StandardItem {
+            label: "Start Miner".into(),
+            activate: Box::new(|_| {
+                //MinerController::run_ethminer(
+            }),
+            ..Default::default()
+        }.into(),
         ]
     }
 
@@ -44,8 +53,8 @@ impl ksni::Tray for MinerTrayLinux {
 }
 
 #[cfg(target_os = "linux")]
-pub fn start_tray_linux() {
-    let service = ksni::TrayService::new(MinerTrayLinux {});
+pub fn start_tray_linux(ms: Arc<RwLock<MinerSettings>>, mc: Arc<Mutex<MinerController>>) {
+    let service = ksni::TrayService::new(MinerTrayLinux {miner_controller: mc, miner_settings: ms});
     let handle = service.handle();
     service.spawn();
 }

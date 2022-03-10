@@ -15,7 +15,7 @@ pub struct MinerController {
     /// Send with this to cause the minerController to kill the process if it exists
     pub kill_tx: Sender<()>,
     /// Send with this to cause the MinerController to kill the process and then spawn a process
-    pub spawn_tx: Sender<Arc<MinerSettings>>,
+    pub spawn_tx: Sender<MinerSettings>,
     /// Send to this when the buffer has been updated, and the view should redraw
     /// Subscribe to this to get the send updates
     pub updated_tx: tokio::sync::broadcast::Sender<()>,
@@ -86,7 +86,7 @@ impl MinerController {
 
     /// Checks every few seconds if the child process has exited
     /// If it has, it will send on the child_died_tx channel, and exit
-    async fn spawn_child_exited_checker(controller: Arc<Mutex<MinerController>>, miner_settings: Arc<MinerSettings>) {
+    async fn spawn_child_exited_checker(controller: Arc<Mutex<MinerController>>, miner_settings: MinerSettings) {
         loop {
             sleep(tokio::time::Duration::from_secs(7)).await;
             println!("checking if child died...",);
@@ -137,14 +137,13 @@ impl MinerController {
 
     /// Aquires the lock and sends to the spawn channel
     /// Sends a reference to the MinerSettings to the controller
-    pub fn run_ethminer(mc: Arc<Mutex<MinerController>>, miner_settings: Arc<MinerSettings>) {
+    pub fn run_ethminer(mc: Arc<Mutex<MinerController>>, miner_settings: MinerSettings) {
         //let mc = miner_controller.clone();
-        let settings = miner_settings.clone();
         tokio::spawn(async move {
             mc.lock()
                 .await
                 .spawn_tx
-                .send(settings)
+                .send(miner_settings)
                 .await
                 .expect("Could not send spawn");
         });
@@ -154,7 +153,7 @@ impl MinerController {
 
     /// This function is run by the spawn_rx on receiving
     /// returns true if the child was spawned
-    async fn spawn_miner(&mut self, miner_settings: Arc<MinerSettings>) -> bool {
+    async fn spawn_miner(&mut self, miner_settings: MinerSettings) -> bool {
         self.kill_miner().await;
 
         println!("Spawning...");
