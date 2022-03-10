@@ -392,7 +392,7 @@ impl epi::App for MinerApp {
 
 #[tokio::main]
 async fn main() {
-    let app: MinerApp = MinerApp::default().await;
+    let mut app: MinerApp = MinerApp::default().await;
     // Gets the icon
     let icon: Vec<u8> = get_icon_data();
     let icon_data = epi::IconData {
@@ -410,6 +410,8 @@ async fn main() {
         icon_data: Some(icon_data),
         ..Default::default()
     };
+
+    app.start_error_listener();
 
     eframe::run_native(Box::new(app), native_options);
 }

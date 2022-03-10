@@ -168,8 +168,8 @@ impl MinerController {
                     println!(" > {}", &line);
                     let mut o = out.lock().await;
                     o.push(strip_ansi_codes(&line).to_string());
-                    if o.len() > 220 {
-                        o.drain(0..20);
+                    if o.len() > 1000 {
+                        o.drain(0..500);
                     }
                     // I don't care if this fails if the rx is not recieving
                     updated_tx.send(());
