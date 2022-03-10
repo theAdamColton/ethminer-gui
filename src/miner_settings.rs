@@ -22,8 +22,7 @@ impl Default for MinerSettings {
 
 impl std::fmt::Debug for MinerSettings {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MinerSettings")
-        .finish()
+        f.debug_struct("MinerSettings").finish()
     }
 }
 
@@ -65,7 +64,7 @@ pub enum DeviceType {
 
 /// For use by egui radio button
 impl PartialEq for DeviceType {
-    fn eq(&self, other: &Self) -> bool { 
+    fn eq(&self, other: &Self) -> bool {
         // returns true if the type of the enum is the same,
         // doesn't look at the data contained by the enum
         std::mem::discriminant(self) == std::mem::discriminant(other)
@@ -78,8 +77,8 @@ impl DeviceType {
         match &self {
             DeviceType::OpenCl(s) => {
                 out.push("-G".to_string());
-                    out.append(&mut s.render());
-            },
+                out.append(&mut s.render());
+            }
             DeviceType::Cuda(s) => {
                 out.push("-U".to_string());
                 out.append(&mut s.render());
@@ -145,10 +144,7 @@ impl Default for Url {
             miner_name: None,
             pool: "us2.ethermine.org".to_string(),
             port: "4444".to_string(),
-            scheme: Scheme {
-                stratum: Stratum::stratum,
-                transport: Transport::tcp,
-            },
+            scheme: Default::default(),
         }
     }
 }
@@ -181,6 +177,15 @@ pub struct Scheme {
     // 0 1 2 or 3
     pub stratum: Stratum,
     pub transport: Transport,
+}
+
+impl Default for Scheme {
+    fn default() -> Self {
+        Self {
+            stratum: Stratum::stratum,
+            transport: Transport::tcp,
+        }
+    }
 }
 
 #[derive(ToString, PartialEq, Clone)]

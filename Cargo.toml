@@ -17,7 +17,7 @@ strum = "0.13.0"
 strum_macros = "0.13.0"
 
 [features]
-default = []
+default = ["persistence"]
 persistence = ["eframe/persistence", "serde"]
 
 [profile.release]
