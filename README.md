@@ -8,6 +8,8 @@ Built with rust and [egui](https://github.com/emilk/egui).
 ## Features
 Easy configuration of select miner and pool settings
 
+Saves and loads settings automatically.
+
 View console output of miner with an in-app preview
 
 Fast: window updates use lazy loading for low cpu usage
@@ -26,9 +28,9 @@ Allow specification of multiple mining pools
 
 Add more device settings, for example temperature limits and usage limits
 
-Add deserialization and serialization using ```serde``` for saving mining profile state on shutdown
-
 Add auto start setting for mining on app launch
+
+For linux targets add daemon miner controller and system tray icon interaction.
 
 Add parsing of hashrate from the stdout, in order to create an egui plot with historical hashrate. 
 
