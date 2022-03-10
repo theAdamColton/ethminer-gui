@@ -76,7 +76,6 @@ pub struct MinerApp {
     error: Arc<Mutex<Option<MinerError>>>,
 }
 
-
 impl MinerApp {
     async fn default() -> Self {
         let mc = MinerController::new();
@@ -138,7 +137,7 @@ impl MinerApp {
         });
     }
 
-    /// Starts a listener on the controller error channel, 
+    /// Starts a listener on the controller error channel,
     /// listening to the miner_controller's error_tx.
     /// Mutates self.error when an error is received
     /// This only works for one error at a time
@@ -256,8 +255,31 @@ impl epi::App for MinerApp {
         &mut self,
         _ctx: &egui::Context,
         frame: &epi::Frame,
-        _storage: Option<&dyn epi::Storage>,
+        storage: Option<&dyn epi::Storage>,
     ) {
+        // Attemps to load miner_settings from storage
+        if let Some(s) = storage {
+            if let Some(json) = s.get_string("miner_settings") {
+                let msr: Result<MinerSettings, _> = serde_json::from_str(&json);
+                match msr {
+                    Ok(miner_settings) => {
+                        println!("Parsed miner settings");
+                        self.settings = Arc::new(miner_settings.clone());
+                        self.temp_settings = miner_settings;
+                    }
+                    Err(e) => {
+                        println!(
+                            "could not parse miner settings from json: \"{json}\" error: \"{e}\""
+                        );
+                    }
+                }
+            } else {
+                println!("miner_settings could not be retrieved from storage");
+            }
+        } else {
+            println!("storage is None!");
+        }
+
         // Assigns the repaint_signal
         tokio::task::block_in_place(|| {
             let rs: Arc<dyn epi::backend::RepaintSignal> =
@@ -331,7 +353,7 @@ impl epi::App for MinerApp {
                 }
                 if ui.button("Apply").clicked() {
                     self.settings = Arc::new(self.temp_settings.clone());
-                    println!("{:?}", &self.settings.render());
+                    println!("Settings saved. New CLI options: {:?}", &self.settings.render());
                 }
             });
             ui.separator();
@@ -356,6 +378,15 @@ impl epi::App for MinerApp {
 
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn epi::Storage) {
+        // Saves some settings
+        let miner_settings = serde_json::to_string(&self.settings);
+        match miner_settings {
+            Ok(json) => {
+                storage.set_string("miner_settings", json.clone());
+                println!("Saved miner_settings \"{json}\"");
+            }
+            _ => {}
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 /// Defines cli settings to be passed to ethminer
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct MinerSettings {
     /// Multiple Url flags are allowed to be specified
     pub url: Vec<Url>,
@@ -57,6 +58,7 @@ impl MinerSettings {
 }
 
 #[derive(Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum DeviceType {
     OpenCl(ClSettings),
     Cuda(CudaSettings),
@@ -89,6 +91,7 @@ impl DeviceType {
 }
 
 #[derive(Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ClSettings {
     pub global_work: String,
     pub local_work: String,
@@ -108,6 +111,7 @@ impl ClSettings {
 }
 
 #[derive(Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct CudaSettings {
     pub grid_size: String,
     pub block_size: String,
@@ -129,6 +133,7 @@ impl CudaSettings {
 /// The The URL is in the form :
 ///   scheme://[user[.workername][:password]@]hostname:port[/...].
 #[derive(Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Url {
     pub wallet_address: String,
     pub miner_name: Option<String>,
@@ -173,6 +178,7 @@ impl Url {
 }
 
 #[derive(Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Scheme {
     // 0 1 2 or 3
     pub stratum: Stratum,
@@ -190,6 +196,7 @@ impl Default for Scheme {
 
 #[derive(ToString, PartialEq, Clone)]
 #[allow(non_camel_case_types)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum Stratum {
     stratum,
     stratum1,
@@ -200,6 +207,7 @@ pub enum Stratum {
 #[derive(ToString, PartialEq, Clone)]
 #[allow(non_camel_case_types)]
 #[allow(dead_code)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum Transport {
     tcp,
     tls,
