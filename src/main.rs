@@ -53,7 +53,7 @@ extern crate strum_macros;
 use icon_data::get_icon_rgba;
 
 use eframe::{egui, epi};
-use std::sync::Arc;
+use tokio::runtime::Handle;
 
 use miner_app::MinerApp;
 
@@ -82,8 +82,9 @@ async fn main() {
 
     app.start_error_listener().await;
 
+    let handle = Handle::current();
     if cfg!(target_os = "linux") {
-        tray::start_tray_linux(app.settings.clone(), app.miner_controller.clone());
+        tray::start_tray_linux(app.settings.clone(), app.miner_controller.clone(), handle);
     } else if cfg!(target_os = "windows") {
     }
 

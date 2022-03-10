@@ -6,11 +6,13 @@ use ksni;
 use ksni::menu::*;
 use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex;
+use tokio::runtime::Handle;
 
 #[cfg(target_os = "linux")]
 struct MinerTrayLinux {
     miner_settings: Arc<RwLock<MinerSettings>>,
     miner_controller: Arc<Mutex<MinerController>>,
+    tokio_handle: Handle,
 }
 
 #[cfg(target_os = "linux")]
@@ -35,7 +37,9 @@ impl ksni::Tray for MinerTrayLinux {
             StandardItem {
                 label: "Start Miner".into(),
                 activate: Box::new(|this: &mut Self| {
-                    MinerController::run_ethminer(this.miner_controller.clone(), this.miner_settings.read().unwrap().clone());
+                    // Sends to miner_controller spawn_tx
+                    let mc = this.miner_settings.read().unwrap().clone();
+                    this.miner_controller.blocking_lock().spawn_tx.blocking_send(mc).unwrap();
                 }),
                 ..Default::default()
             }
@@ -55,10 +59,11 @@ impl ksni::Tray for MinerTrayLinux {
 }
 
 #[cfg(target_os = "linux")]
-pub fn start_tray_linux(ms: Arc<RwLock<MinerSettings>>, mc: Arc<Mutex<MinerController>>) {
+pub fn start_tray_linux(ms: Arc<RwLock<MinerSettings>>, mc: Arc<Mutex<MinerController>>, tokio_handle: Handle) {
     let service = ksni::TrayService::new(MinerTrayLinux {
         miner_controller: mc,
         miner_settings: ms,
+        tokio_handle,
     });
     let handle = service.handle();
     service.spawn();
