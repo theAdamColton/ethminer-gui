@@ -1,4 +1,4 @@
-use crate::icon_data::get_icon_data;
+use crate::icon_data::get_icon_argb;
 use ksni;
 use ksni::menu::*;
 
@@ -27,7 +27,7 @@ impl ksni::Tray for MinerTrayLinux {
     }
 
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
-        let icon_data = get_icon_data();
+        let icon_data = get_icon_argb().to_vec();
         let icon: ksni::Icon = ksni::Icon {
             width: 64,
             height: 64,

@@ -49,7 +49,7 @@ extern crate strum;
 #[macro_use]
 extern crate strum_macros;
 
-use icon_data::get_icon_data;
+use icon_data::get_icon_rgba;
 use miner_controller::MinerController;
 
 use eframe::{egui, epi};
@@ -396,7 +396,7 @@ impl epi::App for MinerApp {
 async fn main() {
     let mut app: MinerApp = MinerApp::default().await;
     // Gets the icon
-    let icon: Vec<u8> = get_icon_data();
+    let icon: Vec<u8> = get_icon_rgba().to_vec();
     let icon_data = epi::IconData {
         rgba: icon,
         width: 64,

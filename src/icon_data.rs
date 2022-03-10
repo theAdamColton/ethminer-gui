@@ -1,6 +1,32 @@
+pub const WIDTH: usize = 64;
+pub const HEIGHT: usize = 64;
+pub const CHANNELS: usize = 4;
+pub const LENGTH: usize = WIDTH * HEIGHT * CHANNELS;
+
+pub fn get_icon_argb() -> [u8; LENGTH] {
+    let rgba = get_icon_rgba();
+    let mut argb = [0; LENGTH];
+    // Sets reds
+    for i in (0..rgba.len()).step_by(4) {
+        argb[i+1] = rgba[i];
+    }
+    // Sets greens, and so on...
+    for i in (1..rgba.len()).step_by(4) {
+        argb[i+1] = rgba[i];
+    }
+    for i in (2..rgba.len()).step_by(4) {
+        argb[i+1] = rgba[i];
+    }
+    for i in (3..rgba.len()).step_by(4) {
+        argb[i-3] = rgba[i];
+    }
+    println!("generated argb");
+    argb
+}
+
 /// Returns the icon data as rgba
-pub fn get_icon_data() -> Vec<u8> {
-    vec![
+pub fn get_icon_rgba() -> [u8; LENGTH] {
+    [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
