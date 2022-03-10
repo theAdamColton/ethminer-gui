@@ -4,6 +4,8 @@
 mod icon_data;
 mod miner_controller;
 mod miner_settings;
+mod tray;
+
 /**
     Adam Colton 2021
 
@@ -412,6 +414,11 @@ async fn main() {
     };
 
     app.start_error_listener().await;
+
+    if cfg!(target_os = "linux") {
+        tray::start_tray_linux();
+    } else if cfg!(target_os = "windows") {
+    }
 
     eframe::run_native(Box::new(app), native_options);
 }
