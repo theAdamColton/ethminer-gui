@@ -141,8 +141,8 @@ impl MinerApp {
     /// listening to the miner_controller's error_tx.
     /// Mutates self.error when an error is received
     /// This only works for one error at a time
-    fn start_error_listener(&mut self) {
-        let error_tx = self.miner_controller.blocking_lock().error_tx.clone();
+    async fn start_error_listener(&mut self) {
+        let error_tx = self.miner_controller.lock().await.error_tx.clone();
         let mut rcv = error_tx.subscribe();
         let error = self.error.clone();
         tokio::task::spawn(async move {
@@ -411,7 +411,7 @@ async fn main() {
         ..Default::default()
     };
 
-    app.start_error_listener();
+    app.start_error_listener().await;
 
     eframe::run_native(Box::new(app), native_options);
 }
