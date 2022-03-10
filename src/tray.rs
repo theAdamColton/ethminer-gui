@@ -5,8 +5,8 @@ use crate::miner_settings::*;
 use ksni;
 use ksni::menu::*;
 use std::sync::{Arc, RwLock};
-use tokio::sync::Mutex;
 use tokio::runtime::Handle;
+use tokio::sync::Mutex;
 
 #[cfg(target_os = "linux")]
 struct MinerTrayLinux {
@@ -39,8 +39,27 @@ impl ksni::Tray for MinerTrayLinux {
                 activate: Box::new(|this: &mut Self| {
                     // Sends to miner_controller spawn_tx
                     let mc = this.miner_settings.read().unwrap().clone();
-                    this.miner_controller.blocking_lock().spawn_tx.blocking_send(mc).unwrap();
+                    this.miner_controller
+                        .blocking_lock()
+                        .spawn_tx
+                        .blocking_send(mc)
+                        .unwrap();
                 }),
+                icon_name: "media-playback-start".into(),
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: "Stop Miner".into(),
+                activate: Box::new(|this: &mut Self| {
+                    // Sends to miner_controller kill_tx
+                    this.miner_controller
+                        .blocking_lock()
+                        .kill_tx
+                        .blocking_send(())
+                        .unwrap();
+                }),
+                icon_name: "process-stop".into(),
                 ..Default::default()
             }
             .into(),
@@ -59,7 +78,11 @@ impl ksni::Tray for MinerTrayLinux {
 }
 
 #[cfg(target_os = "linux")]
-pub fn start_tray_linux(ms: Arc<RwLock<MinerSettings>>, mc: Arc<Mutex<MinerController>>, tokio_handle: Handle) {
+pub fn start_tray_linux(
+    ms: Arc<RwLock<MinerSettings>>,
+    mc: Arc<Mutex<MinerController>>,
+    tokio_handle: Handle,
+) {
     let service = ksni::TrayService::new(MinerTrayLinux {
         miner_controller: mc,
         miner_settings: ms,
