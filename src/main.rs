@@ -250,79 +250,59 @@ impl epi::App for MinerApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.collapsing("Miner Settings", |ui| {
-                ui.collapsing("Pool Settings", |ui| {
-                    for url in &mut self.temp_settings.url {
-                        settings_entry("Wallet Address", ui, |ui| {
-                            ui.add(egui::TextEdit::singleline(&mut url.wallet_address));
-                        });
-                        settings_entry("Pool Address", ui, |ui| {
-                            ui.add(egui::TextEdit::singleline(&mut url.pool));
-                        });
-                        settings_entry("Port", ui, |ui| {
-                            ui.add(egui::TextEdit::singleline(&mut url.port));
-                        });
-
-                        ui.collapsing("Scheme", |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label("Stratum");
-                                ui.radio_value(
-                                    &mut url.scheme.stratum,
-                                    Stratum::stratum,
-                                    "Stratum",
-                                );
-                                ui.radio_value(
-                                    &mut url.scheme.stratum,
-                                    Stratum::stratum1,
-                                    "Stratum1",
-                                );
-                                ui.radio_value(
-                                    &mut url.scheme.stratum,
-                                    Stratum::stratum2,
-                                    "Stratum2",
-                                );
-                                ui.radio_value(
-                                    &mut url.scheme.stratum,
-                                    Stratum::stratum3,
-                                    "Stratum3",
-                                );
-                            });
-                        });
-                    }
+            for url in &mut self.temp_settings.url {
+                settings_entry("Wallet Address", ui, |ui| {
+                    ui.add(egui::TextEdit::singleline(&mut url.wallet_address));
+                });
+                settings_entry("Pool Address", ui, |ui| {
+                    ui.add(egui::TextEdit::singleline(&mut url.pool));
+                });
+                settings_entry("Port", ui, |ui| {
+                    ui.add(egui::TextEdit::singleline(&mut url.port));
                 });
 
-                settings_entry("Ethminer Path", ui, |ui| {
-                    ui.add(egui::TextEdit::singleline(&mut self.temp_settings.bin_path));
-                    if ui.button("Choose Path").clicked() {
-                        // Native file picker
-                        let path = std::env::current_dir().unwrap();
-                        let res = rfd::FileDialog::new().set_directory(&path).pick_files();
+                ui.collapsing("Scheme", |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Stratum");
+                        ui.radio_value(&mut url.scheme.stratum, Stratum::stratum, "Stratum");
+                        ui.radio_value(&mut url.scheme.stratum, Stratum::stratum1, "Stratum1");
+                        ui.radio_value(&mut url.scheme.stratum, Stratum::stratum2, "Stratum2");
+                        ui.radio_value(&mut url.scheme.stratum, Stratum::stratum3, "Stratum3");
+                    });
+                });
+            }
 
-                        println!("Chose {:#?}", res);
-                        match res {
-                            Some(x) => {
-                                if x.len() == 1 {
-                                    self.temp_settings.bin_path =
-                                        x[0].to_str().expect("Could not get path").to_string();
-                                }
+            settings_entry("Ethminer Path", ui, |ui| {
+                ui.add(egui::TextEdit::singleline(&mut self.temp_settings.bin_path));
+                if ui.button("Choose Path").clicked() {
+                    // Native file picker
+                    let path = std::env::current_dir().unwrap();
+                    let res = rfd::FileDialog::new().set_directory(&path).pick_files();
+
+                    println!("Chose {:#?}", res);
+                    match res {
+                        Some(x) => {
+                            if x.len() == 1 {
+                                self.temp_settings.bin_path =
+                                    x[0].to_str().expect("Could not get path").to_string();
                             }
-                            None => {}
                         }
+                        None => {}
                     }
-                });
+                }
+            });
 
-                self.show_device_settings(ui);
+            self.show_device_settings(ui);
 
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        // Cancel temp_settings
-                        self.temp_settings = (*self.settings).clone();
-                    }
-                    if ui.button("Apply").clicked() {
-                        self.settings = Arc::new(self.temp_settings.clone());
-                        println!("{:?}", &self.settings.render());
-                    }
-                });
+            ui.horizontal(|ui| {
+                if ui.button("Cancel").clicked() {
+                    // Cancel temp_settings
+                    self.temp_settings = (*self.settings).clone();
+                }
+                if ui.button("Apply").clicked() {
+                    self.settings = Arc::new(self.temp_settings.clone());
+                    println!("{:?}", &self.settings.render());
+                }
             });
             ui.separator();
             ui.horizontal(|ui| {
@@ -334,7 +314,7 @@ impl epi::App for MinerApp {
                 }
             });
 
-            ui.vertical_centered_justified(|ui| { 
+            ui.vertical_centered_justified(|ui| {
                 self.show_ethminer_out(ui);
             });
         });
