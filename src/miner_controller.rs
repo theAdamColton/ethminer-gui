@@ -121,6 +121,37 @@ impl MinerController {
         }
     }
 
+    /// Aquires the lock and sends to the kill channel
+    pub fn kill_child_miner(mc: Arc<Mutex<MinerController>>) {
+        //let mc = miner_controller.clone();
+        tokio::spawn(async move {
+            println!("spawned");
+            mc.lock()
+                .await
+                .kill_tx
+                .send(())
+                .await
+                .expect("Could not send kill");
+        });
+    }
+
+    /// Aquires the lock and sends to the spawn channel
+    /// Sends a reference to the MinerSettings to the controller
+    pub fn run_ethminer(mc: Arc<Mutex<MinerController>>, miner_settings: Arc<MinerSettings>) {
+        //let mc = miner_controller.clone();
+        let settings = miner_settings.clone();
+        tokio::spawn(async move {
+            mc.lock()
+                .await
+                .spawn_tx
+                .send(settings)
+                .await
+                .expect("Could not send spawn");
+        });
+    }
+
+
+
     /// This function is run by the spawn_rx on receiving
     /// returns true if the child was spawned
     async fn spawn_miner(&mut self, miner_settings: Arc<MinerSettings>) -> bool {

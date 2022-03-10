@@ -92,35 +92,6 @@ impl MinerApp {
         }
     }
 
-    /// Aquires the lock and sends to the spawn channel
-    /// Sends a reference to the MinerSettings to the controller
-    fn run_ethminer(&self) {
-        let mc = self.miner_controller.clone();
-        let settings = self.settings.clone();
-        tokio::spawn(async move {
-            mc.lock()
-                .await
-                .spawn_tx
-                .send(settings)
-                .await
-                .expect("Could not send spawn");
-        });
-    }
-
-    /// Aquires the lock and sends to the kill channel
-    fn kill_child_miner(&self) {
-        let mc = self.miner_controller.clone();
-        tokio::spawn(async move {
-            println!("spawned");
-            mc.lock()
-                .await
-                .kill_tx
-                .send(())
-                .await
-                .expect("Could not send kill");
-        });
-    }
-
     /// Starts the listener for the update channel,
     /// requests repaint when receiving the update signal
     fn start_updater_task(&mut self, sender: tokio::sync::broadcast::Sender<()>) {
@@ -247,7 +218,7 @@ impl MinerApp {
 
 impl Drop for MinerApp {
     fn drop(&mut self) {
-        self.kill_child_miner();
+        MinerController::kill_child_miner(self.miner_controller.clone());
     }
 }
 
@@ -361,10 +332,10 @@ impl epi::App for MinerApp {
             ui.separator();
             ui.horizontal(|ui| {
                 if ui.button("Run").clicked() {
-                    self.run_ethminer();
+                    MinerController::run_ethminer(self.miner_controller.clone(), self.settings.clone());
                 }
                 if ui.button("Stop").clicked() {
-                    self.kill_child_miner();
+                    MinerController::kill_child_miner(self.miner_controller.clone());
                 }
             });
 

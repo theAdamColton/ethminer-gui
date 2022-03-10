@@ -23,7 +23,13 @@ impl ksni::Tray for MinerTrayLinux {
             activate: Box::new(|_| std::process::exit(0)),
             ..Default::default()
         }
-        .into()]
+        .into(),
+//        StandardItem {
+//            label: "Start Miner".into(),
+//            activate: Box::new(|_| 
+//            ..Default::default()
+//        }.into(),
+        ]
     }
 
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
