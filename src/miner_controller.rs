@@ -22,7 +22,7 @@ pub struct MinerController {
     /// Send to this when a recoverable error has been encountered
     /// Subscribe to this to get informatino on recoverable errors
     /// With the error message string
-    pub error_tx: tokio::sync::broadcast::Sender<&'static str>,
+    pub error_tx: tokio::sync::broadcast::Sender<String>,
     /// The handle to the child process. This only set to None when the child is killed intentionally.
     child_handle: Option<Child>,
     /// Contains the output of the miner as a Vec of the lines
@@ -176,7 +176,7 @@ impl MinerController {
 
                 println!("Error spawning: {:?}", error);
                 self.error_tx
-                    .send("Error spawing ethminer!")
+                    .send(format!("Error spawing ethminer! Error message: {error}"))
                     .expect("Failed to send error message");
                 false
             }

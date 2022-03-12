@@ -8,7 +8,7 @@ use std::sync::RwLock;
 use tokio;
 use tokio::sync::Mutex;
 
-pub struct MinerError(&'static str);
+pub struct MinerError(String);
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct MinerApp {
@@ -157,7 +157,7 @@ impl MinerApp {
         egui::Window::new("Error!")
             //.open(&mut true)
             .show(ctx, |ui| {
-                ui.label(error.as_ref().unwrap().0);
+                ui.label(&error.as_ref().unwrap().0);
                 if ui.button("Ok").clicked() {
                     *error = None;
                 }
@@ -277,8 +277,10 @@ impl epi::App for MinerApp {
                     self.temp_settings = self.settings.read().unwrap().clone();
                 }
                 if ui.button("Apply").clicked() {
-                    let mut settings = self.settings.write().unwrap();
-                    *settings = self.temp_settings.clone();
+                    {
+                        let mut settings = self.settings.write().unwrap();
+                        *settings = self.temp_settings.clone();
+                    }
                     println!(
                         "Settings saved. New CLI options: {:?}",
                         &self.settings.read().unwrap().render()
